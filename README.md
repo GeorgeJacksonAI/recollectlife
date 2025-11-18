@@ -194,7 +194,7 @@ Health check endpoint.
 
 ## 🔒 Security Notes
 
-⚠️ **CRITICAL**: The API key `AIzaSyD3z0-IObrFT00in0qWCpKFME6bqD5EBa0` was accidentally committed to git history.
+⚠️ **CRITICAL**: The API key was accidentally committed to git history. Replace with `GOOGLE_API_KEY = "REPLACE_ME_WITH_YOUR_GEMINI_API_KEY"` in your .env file.
 
 **Immediate Actions Required:**
 1. Rotate the key in [Google AI Studio](https://aistudio.google.com/app/apikey)
