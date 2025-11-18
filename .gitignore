@@ -1,0 +1,34 @@
+# Root .gitignore
+# Node / Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Python / Backend
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Environment & secrets
+.env
+.env.*
+
+# Logs & temp
+logs/
+*.log
+*.tmp
+
+# OS / Editors
+.DS_Store
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+
+# Coverage / test artifacts
+coverage/
+*.coverage
