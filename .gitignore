@@ -32,3 +32,8 @@ logs/
 # Coverage / test artifacts
 coverage/
 *.coverage
+
+# Agents and IDE
+.github
+.cursor
+
