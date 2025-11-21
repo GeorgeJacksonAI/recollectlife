@@ -17,7 +17,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from api.ai_fallback import run_gemini_fallback
-from src.conversation import INTERVIEW_PHASES, STORY_ROUTES
+from api.conversation import INTERVIEW_PHASES, STORY_ROUTES
 
 
 def validate_payload(data: Dict) -> tuple[bool, str, Dict]:

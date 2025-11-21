@@ -1,9 +1,10 @@
-"""Module designed to handle conversation management for the chatbot application."""
+"""Module designed to handle conversation management for the chatbot application.
+
+Moved from src.conversation to api.conversation to colocate with serverless functions.
+"""
 
 from typing import Dict, List, Optional
 
-## AI PROMPTS THE USER ASKING FOR THIS INFORMATON
-## TODO: THIS SHOULD BE ASKED BEFORE THE INTERVIEW STARTS
 USER_PROFILE = {
     "city": "your_city",
     "gender": "your_gender",
@@ -13,10 +14,6 @@ USER_PROFILE = {
     "why_story": "your_reason_for_telling_story",
 }
 
-
-## TODO WHEIGHT TAGS BASED ON USER INPUT
-## TODO PERMANENT TAGS VS TEMPORARY TAGS
-## TODO: TAGS SHOULD BE DINAMIC, CHANGE AS THE USER CONVERSATION PROGRESSES
 TAGS = [
     "adventure",
     "family",
@@ -39,8 +36,6 @@ TAGS = [
     "resilience",
 ]
 
-## TODO IMPLEMENT BETTER PERSONAL ROUTE AND IMPROVE THE OTHER ROUTES.
-## TODO ALLOW FOR MID CHANGE OF ROUTE IF THE USER WANTS TO SWITCH
 STORY_ROUTES = {
     "1": {
         "name": "Chronological Steward",
@@ -143,7 +138,7 @@ Current question focus: AUDIENCE & STAKES
 Ask ONE question to identify who this story is for and why it matters emotionally.
 
 Example questions:
-- "Who would you most want to hear this story—and why?"
+- "Who would you most want to hear this storyand why?"
 - "Is there someone specific you're hoping will understand you better through this game?"
 - "What impact do you hope this story has on the people who play it?"
 
@@ -182,7 +177,7 @@ Current question focus: VULNERABILITY & MEANING
 Ask ONE question to unlock deeper, perhaps unspoken, content.
 
 Example questions:
-- "What’s something you’ve never told anyone—but might want to share through this game?"
+- "Whats something youve never told anyonebut might want to share through this game?"
 - "What is a truth about your life that took you a long time to accept?"
 - "Is there a failure or struggle that you're proud of surviving?"
 
@@ -220,7 +215,7 @@ Current question focus: DEEP DIVE
 Ask ONE follow-up question to expand on a specific moment they mentioned earlier that feels rich for a game card.
 
 Example questions:
-- "Let’s go deeper: tell me more about [specific moment they mentioned]."
+- "Lets go deeper: tell me more about [specific moment they mentioned]."
 - "You mentioned [person/event] earlier; can you paint a picture of that scene for me?"
 - "What were you feeling exactly when [event] happened?"
 
@@ -310,26 +305,7 @@ class ConversationState:
         return INTERVIEW_PHASES[self.phase]
 
     def should_advance(self, user_message: str) -> bool:
-        """
-        Decide whether the conversation state machine should advance to the next phase based on the user's message.
-        Behavior:
-        - When self.phase == "GREETING": treat short affirmative responses as intent to proceed.
-            - Checks for presence of common affirmative tokens (e.g. "yes", "yeah", "sure", "ready", "ok", "let's go", "sim", "vamos")
-            - Comparison is case-insensitive and uses substring membership, so tokens may match as substrings of the input.
-        - When self.phase == "ROUTE_SELECTION": validate and store route selection (1-7)
-            - For routes 1-6: store route and advance
-            - For route 7: if route not yet set, store route but don't advance (need description)
-            - For route 7: if route already set to "7", store description and advance
-        - When "QUESTION" is in self.phase: consider the user to have given a substantial answer when the trimmed message length exceeds 20 characters.
-        - For any other phase values, the function returns False (no advancement).
-        Parameters:
-        - user_message (str): The raw message text provided by the user.
-        Returns:
-        - bool: True if the conversation should advance to the next phase according to the above rules; otherwise False.
-        Notes:
-        - The checks are intentionally simple heuristics and may be refined to use more robust NLP or pattern matching if needed.
-        - Leading/trailing whitespace is ignored for the length check in QUESTION phases.
-        """
+        """Decide whether the conversation state machine should advance to the next phase based on the user's message."""
 
         if self.phase == "GREETING":
             affirmative = [
@@ -344,30 +320,25 @@ class ConversationState:
             ]
             return any(word in user_message.lower() for word in affirmative)
 
-        # Route selection logic
         if self.phase == "ROUTE_SELECTION":
             message_clean = user_message.strip()
 
-            # Check if user entered a route number
             if message_clean in ["1", "2", "3", "4", "5", "6"]:
                 self.selected_route = message_clean
                 return True
 
-            # Handle route 7 (custom route)
             if message_clean == "7":
                 if self.selected_route is None:
                     self.selected_route = "7"
-                    return False  # Don't advance yet, need description
+                    return False
                 return False
 
-            # If route 7 already selected, next message is the description
             if self.selected_route == "7" and len(message_clean) > 10:
                 self.custom_route_description = message_clean
                 return True
 
             return False
 
-        # After each question, advance when user provides any non-empty answer
         if "QUESTION" in self.phase:
             return len(user_message.strip()) > 0
 
@@ -408,7 +379,6 @@ class ConversationState:
         if not route_info:
             return base_instruction
 
-        # Add route context to instruction
         route_context = f"""
 SELECTED ROUTE: {route_info['name']}
 Route Focus: {route_info['goal']}

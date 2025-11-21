@@ -13,7 +13,7 @@ import pytest
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.conversation import INTERVIEW_PHASES, STORY_ROUTES, ConversationState
+from api.conversation import INTERVIEW_PHASES, STORY_ROUTES, ConversationState
 
 
 class TestConversationStateInitialization:
