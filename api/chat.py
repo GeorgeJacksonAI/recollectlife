@@ -1,8 +1,8 @@
 """
-Serverless chat endpoint for Life Story Game AI Interviewer.
+Serverless chat endpoint for Life Story AI Interviewer - Modular Route System.
 
 Vercel serverless function that handles AI chat requests with stateless
-architecture. All conversation state is managed client-side.
+architecture. Uses new modular route system from api/routes/.
 
 Endpoint: POST /api/chat
 """
@@ -11,15 +11,21 @@ import json
 import sys
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 from urllib.parse import parse_qs
 
-# Add project root to path to import conversation logic
+# Add project root to path to import route logic
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from api.ai_fallback import run_gemini_fallback
-from api.conversation import INTERVIEW_PHASES, STORY_ROUTES
+from api.routes import ChronologicalSteward
+
+# Route registry - maps route identifiers to route classes
+ROUTE_REGISTRY = {
+    "1": ChronologicalSteward,
+    "chronological": ChronologicalSteward,
+}
 
 
 def validate_payload(data: Dict) -> tuple[bool, str, Dict]:
@@ -59,72 +65,106 @@ def validate_payload(data: Dict) -> tuple[bool, str, Dict]:
     if total_chars > 50000:  # 50K char limit
         return False, f"Total message size ({total_chars} chars) exceeds 50K limit", {}
 
-    # Get phase (default to GREETING if not provided)
-    phase = data.get("phase", "GREETING")
-    if phase not in INTERVIEW_PHASES:
-        return False, f"Invalid phase: {phase}", {}
+    # Get route (default to chronological)
+    route_id = data.get("route", "1")
+    if route_id not in ROUTE_REGISTRY:
+        return False, f"Invalid route: {route_id}", {}
 
-    # Get optional route info
-    selected_route = data.get("selected_route")
-    custom_route_description = data.get("custom_route_description")
+    # Get phase (optional - route will determine if not provided)
+    phase = data.get("phase")
 
-    # Validate route if provided
-    if selected_route and selected_route not in ["1", "2", "3", "4", "5", "6", "7"]:
-        return False, f"Invalid route: {selected_route}", {}
+    # Get age range (for age-aware routes)
+    age_range = data.get("age_range")
 
     return (
         True,
         "",
         {
             "messages": messages,
+            "route_id": route_id,
             "phase": phase,
-            "selected_route": selected_route,
-            "custom_route_description": custom_route_description,
+            "age_range": age_range,
         },
     )
 
 
-def get_system_instruction(
-    phase: str, selected_route: str = None, custom_description: str = None
-) -> str:
+def reconstruct_route_state(
+    route_class, messages: list, age_range: Optional[str] = None
+):
     """
-    Get system instruction based on phase and selected route.
+    Reconstruct route state from message history.
+
+    Since the backend is stateless, we reconstruct the route object's state
+    from the client-provided message history.
 
     Args:
-        phase: Current interview phase
-        selected_route: Selected storytelling route (1-7)
-        custom_description: Custom route description (if route 7)
+        route_class: The route class to instantiate
+        messages: Message history from client
+        age_range: User's age range (if already selected)
 
     Returns:
-        System instruction string
+        Instantiated route object with reconstructed state
     """
-    phase_config = INTERVIEW_PHASES.get(phase, INTERVIEW_PHASES["GREETING"])
-    system_instruction = phase_config["system_instruction"]
+    route = route_class()
 
-    # Adapt instruction based on selected route for question phases
-    if "QUESTION" in phase and selected_route:
-        if selected_route in STORY_ROUTES:
-            route_info = STORY_ROUTES[selected_route]
-        elif selected_route == "7":
-            route_info = {
-                "name": "Personal Route",
-                "persona": "Custom approach",
-                "goal": "Follow user's preferred method",
-                "prompt_focus": custom_description or "Custom storytelling approach",
-            }
-        else:
-            return system_instruction
+    # Replay messages to reconstruct state
+    for msg in messages:
+        route.add_message(msg["role"], msg["content"])
 
-        route_context = f"""
-SELECTED ROUTE: {route_info['name']}
-Route Focus: {route_info['goal']}
-User Persona: {route_info['persona']}
+    # Set age range if provided
+    if age_range and hasattr(route, "age_range"):
+        route.age_range = age_range
+        if hasattr(route, "_configure_phases_for_age"):
+            route._configure_phases_for_age()
 
-Adapt your questioning style to match this route's approach while maintaining the core question objective.
-"""
-        system_instruction = route_context + "\n" + system_instruction
+    return route
 
-    return system_instruction
+
+def get_current_phase_from_route(route, messages: list) -> str:
+    """
+    Determine current phase from route state and message history.
+
+    Args:
+        route: Route object
+        messages: Message history
+
+    Returns:
+        Current phase name
+    """
+    # If phase_order not configured yet, return initial phase
+    if not route.phase_order or len(route.phase_order) <= 2:
+        return route.get_initial_phase()
+
+    # Count user messages to estimate phase
+    user_message_count = sum(1 for msg in messages if msg["role"] == "user")
+
+    # Determine phase index
+    # GREETING: 0 user messages or 1 (saying "yes")
+    # AGE_SELECTION: 1-2 user messages
+    # Subsequent phases: 3+ user messages
+
+    if user_message_count == 0:
+        return "GREETING"
+    elif user_message_count == 1:
+        # Check if they said yes to greeting
+        last_user_msg = next(
+            (m["content"] for m in reversed(messages) if m["role"] == "user"), ""
+        )
+        affirmative = ["yes", "yeah", "sure", "ready", "ok", "let's go", "sim", "vamos"]
+        if any(word in last_user_msg.lower() for word in affirmative):
+            return "AGE_SELECTION"
+        return "GREETING"
+    elif user_message_count == 2:
+        # Should be at AGE_SELECTION or just past it
+        if not route.is_age_selected():
+            return "AGE_SELECTION"
+        # Age was selected, move to first interview phase
+        return route.phase_order[2] if len(route.phase_order) > 2 else "CHILDHOOD"
+    else:
+        # Advanced phases - estimate based on message count
+        # Each phase after AGE_SELECTION takes ~1 user message
+        phase_index = min(user_message_count, len(route.phase_order) - 1)
+        return route.phase_order[phase_index]
 
 
 class handler(BaseHTTPRequestHandler):
@@ -134,9 +174,9 @@ class handler(BaseHTTPRequestHandler):
     Expected request body:
     {
         "messages": [{"role": "user|assistant", "content": "..."}],
-        "phase": "GREETING|ROUTE_SELECTION|QUESTION_N|SYNTHESIS",
-        "selected_route": "1-7" (optional),
-        "custom_route_description": "..." (optional, for route 7)
+        "route": "1|chronological" (optional, default: "1"),
+        "phase": "GREETING|AGE_SELECTION|..." (optional),
+        "age_range": "under_18|18_30|..." (optional, for age-aware routes)
     }
 
     Returns:
@@ -144,7 +184,8 @@ class handler(BaseHTTPRequestHandler):
         "response": "AI generated response",
         "model": "model_name_used",
         "attempts": 2,
-        "phase": "current_phase"
+        "phase": "current_phase",
+        "age_range": "under_18|..." (if applicable)
     }
     """
 
@@ -174,14 +215,33 @@ class handler(BaseHTTPRequestHandler):
 
             # Extract validated data
             messages = validated["messages"]
-            phase = validated["phase"]
-            selected_route = validated["selected_route"]
-            custom_route_description = validated["custom_route_description"]
+            route_id = validated["route_id"]
+            provided_phase = validated["phase"]
+            age_range = validated["age_range"]
+
+            # Instantiate route and reconstruct state
+            route_class = ROUTE_REGISTRY[route_id]
+            route = reconstruct_route_state(route_class, messages, age_range)
+
+            # Determine current phase
+            if provided_phase:
+                current_phase = provided_phase
+            else:
+                current_phase = get_current_phase_from_route(route, messages)
 
             # Get system instruction for current phase
-            system_instruction = get_system_instruction(
-                phase, selected_route, custom_route_description
-            )
+            try:
+                route.phase = current_phase
+                phase_config = route.get_current_phase()
+                system_instruction = phase_config["system_instruction"]
+            except (ValueError, KeyError) as e:
+                self._send_json_response(
+                    400,
+                    {
+                        "error": f"Invalid phase '{current_phase}' for route '{route_id}': {str(e)}"
+                    },
+                )
+                return
 
             # Generate AI response with fallback
             result = run_gemini_fallback(
@@ -200,16 +260,20 @@ class handler(BaseHTTPRequestHandler):
                 )
                 return
 
+            # Prepare response
+            response_data = {
+                "response": result["content"],
+                "model": result["model"],
+                "attempts": result["attempts"],
+                "phase": current_phase,
+            }
+
+            # Include age_range in response if route has it
+            if hasattr(route, "get_age_range") and route.get_age_range():
+                response_data["age_range"] = route.get_age_range()
+
             # Return success response
-            self._send_json_response(
-                200,
-                {
-                    "response": result["content"],
-                    "model": result["model"],
-                    "attempts": result["attempts"],
-                    "phase": phase,
-                },
-            )
+            self._send_json_response(200, response_data)
 
         except json.JSONDecodeError as e:
             self._send_json_response(400, {"error": f"Invalid JSON: {str(e)}"})
