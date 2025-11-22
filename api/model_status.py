@@ -7,7 +7,9 @@ Endpoint: GET /api/model-status
 """
 
 import json
+import os
 import sys
+from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
 # Add project root to path
@@ -17,7 +19,7 @@ sys.path.insert(0, str(project_root))
 from api.ai_fallback import get_model_cascade
 
 
-def handler(event, context):
+class handler(BaseHTTPRequestHandler):
     """
     Vercel serverless function handler for model status endpoint.
 
@@ -29,56 +31,40 @@ def handler(event, context):
         "source": "environment|default"
     }
     """
-    # Get HTTP method
-    method = event.get("httpMethod") or event.get("method", "")
-    
-    # Handle CORS preflight
-    if method == "OPTIONS":
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "GET, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type",
-            },
-            "body": "",
-        }
 
-    # Only accept GET
-    if method != "GET":
-        return {
-            "statusCode": 405,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": "Method not allowed. Use GET."}),
-        }
+    def do_OPTIONS(self):
+        """Handle CORS preflight requests."""
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
 
-    try:
-        # Get model cascade from environment or defaults
-        import os
+    def do_GET(self):
+        """Handle GET requests for model status."""
+        try:
+            # Get model cascade from environment or defaults
+            models = get_model_cascade()
+            env_models = os.getenv("GEMINI_MODELS")
 
-        models = get_model_cascade()
-        env_models = os.getenv("GEMINI_MODELS")
+            response = {
+                "available_models": models,
+                "total_models": len(models),
+                "fallback_enabled": True,
+                "source": "environment" if env_models else "default",
+            }
 
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
-            "body": json.dumps(
-                {
-                    "available_models": models,
-                    "total_models": len(models),
-                    "fallback_enabled": True,
-                    "source": "environment" if env_models else "default",
-                }
-            ),
-        }
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode("utf-8"))
 
-    except Exception as e:
-        print(f"[ERROR] Error in model_status handler: {e}")
-        return {
-            "statusCode": 500,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": f"Internal server error: {str(e)}"}),
-        }
+        except Exception as e:
+            print(f"[ERROR] Error in model_status handler: {e}")
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            error_response = {"error": f"Internal server error: {str(e)}"}
+            self.wfile.write(json.dumps(error_response).encode("utf-8"))

@@ -9,8 +9,10 @@ Endpoint: POST /api/chat
 
 import json
 import sys
+from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from typing import Dict
+from urllib.parse import parse_qs
 
 # Add project root to path to import conversation logic
 project_root = Path(__file__).parent.parent
@@ -125,7 +127,7 @@ Adapt your questioning style to match this route's approach while maintaining th
     return system_instruction
 
 
-def handler(event, context):
+class handler(BaseHTTPRequestHandler):
     """
     Vercel serverless function handler for chat endpoint.
 
@@ -145,108 +147,84 @@ def handler(event, context):
         "phase": "current_phase"
     }
     """
-    # Get HTTP method
-    method = event.get("httpMethod") or event.get("method", "")
-    
-    # Handle CORS preflight
-    if method == "OPTIONS":
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "POST, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type",
-            },
-            "body": "",
-        }
 
-    # Only accept POST
-    if method != "POST":
-        return {
-            "statusCode": 405,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": "Method not allowed. Use POST."}),
-        }
+    def do_OPTIONS(self):
+        """Handle CORS preflight requests."""
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
 
-    try:
-        # Parse request body
-        body = event.get("body", "")
-        if isinstance(body, str):
+    def do_POST(self):
+        """Handle POST requests for chat."""
+        try:
+            # Read request body
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8")
+
+            # Parse JSON
             data = json.loads(body) if body else {}
-        else:
-            data = body
 
-        # Validate payload
-        is_valid, error_msg, validated = validate_payload(data)
-        if not is_valid:
-            return {
-                "statusCode": 400,
-                "headers": {"Content-Type": "application/json"},
-                "body": json.dumps({"error": error_msg}),
-            }
+            # Validate payload
+            is_valid, error_msg, validated = validate_payload(data)
+            if not is_valid:
+                self._send_json_response(400, {"error": error_msg})
+                return
 
-        # Extract validated data
-        messages = validated["messages"]
-        phase = validated["phase"]
-        selected_route = validated["selected_route"]
-        custom_route_description = validated["custom_route_description"]
+            # Extract validated data
+            messages = validated["messages"]
+            phase = validated["phase"]
+            selected_route = validated["selected_route"]
+            custom_route_description = validated["custom_route_description"]
 
-        # Get system instruction for current phase
-        system_instruction = get_system_instruction(
-            phase, selected_route, custom_route_description
-        )
+            # Get system instruction for current phase
+            system_instruction = get_system_instruction(
+                phase, selected_route, custom_route_description
+            )
 
-        # Generate AI response with fallback
-        result = run_gemini_fallback(
-            messages=messages,
-            system_instruction=system_instruction,
-        )
+            # Generate AI response with fallback
+            result = run_gemini_fallback(
+                messages=messages,
+                system_instruction=system_instruction,
+            )
 
-        # Check if generation succeeded
-        if not result["success"]:
-            return {
-                "statusCode": 500,
-                "headers": {"Content-Type": "application/json"},
-                "body": json.dumps(
+            # Check if generation succeeded
+            if not result["success"]:
+                self._send_json_response(
+                    500,
                     {
                         "error": result["error"] or "Failed to generate AI response",
                         "attempts": result["attempts"],
-                    }
-                ),
-            }
+                    },
+                )
+                return
 
-        # Return success response
-        return {
-            "statusCode": 200,
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
-            "body": json.dumps(
+            # Return success response
+            self._send_json_response(
+                200,
                 {
                     "response": result["content"],
                     "model": result["model"],
                     "attempts": result["attempts"],
                     "phase": phase,
-                }
-            ),
-        }
+                },
+            )
 
-    except json.JSONDecodeError as e:
-        return {
-            "statusCode": 400,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": f"Invalid JSON: {str(e)}"}),
-        }
+        except json.JSONDecodeError as e:
+            self._send_json_response(400, {"error": f"Invalid JSON: {str(e)}"})
 
-    except Exception as e:
-        print(f"[ERROR] Unhandled exception in chat handler: {e}")
-        import traceback
+        except Exception as e:
+            print(f"[ERROR] Unhandled exception in chat handler: {e}")
+            import traceback
 
-        traceback.print_exc()
+            traceback.print_exc()
+            self._send_json_response(500, {"error": f"Internal server error: {str(e)}"})
 
-        return {
-            "statusCode": 500,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": f"Internal server error: {str(e)}"}),
-        }
+    def _send_json_response(self, status_code: int, data: dict):
+        """Helper method to send JSON responses."""
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode("utf-8"))
