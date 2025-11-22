@@ -45,7 +45,7 @@ function App() {
     }
     setAgeRange(ageMap[ageNumber])
     setShowAgeSelection(false)
-    
+
     // Send age selection to backend
     await sendMessage(ageNumber)
   }
