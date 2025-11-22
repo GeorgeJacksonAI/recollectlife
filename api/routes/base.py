@@ -6,7 +6,7 @@ from typing import Dict, List
 
 class StoryRoute(ABC):
     """Abstract base class for story collection routes.
-    
+
     Routes can optionally support age-based customization by implementing
     age range tracking and phase filtering logic.
     """
@@ -15,7 +15,9 @@ class StoryRoute(ABC):
         self.phase = None
         self.messages: List[Dict[str, str]] = []
         self.phase_order: List[str] = []
-        self.metadata: Dict[str, str] = {}  # For storing route-specific metadata (age, preferences, etc.)
+        self.metadata: Dict[str, str] = (
+            {}
+        )  # For storing route-specific metadata (age, preferences, etc.)
 
     @property
     @abstractmethod

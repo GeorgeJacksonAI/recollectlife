@@ -7,7 +7,7 @@ from .base import StoryRoute
 
 class ChronologicalSteward(StoryRoute):
     """Story route that captures life chronologically from birth to present.
-    
+
     This route adapts interview phases based on the user's age, ensuring
     questions are relevant to their life stage (e.g., adolescents skip midlife questions).
     """
@@ -22,11 +22,53 @@ class ChronologicalSteward(StoryRoute):
 
     # Age range to phase mapping - determines which life stages to include
     AGE_PHASE_MAPPING = {
-        "under_18": ["GREETING", "AGE_SELECTION", "CHILDHOOD", "ADOLESCENCE", "PRESENT", "SYNTHESIS"],
-        "18_30": ["GREETING", "AGE_SELECTION", "CHILDHOOD", "ADOLESCENCE", "EARLY_ADULTHOOD", "PRESENT", "SYNTHESIS"],
-        "31_45": ["GREETING", "AGE_SELECTION", "CHILDHOOD", "ADOLESCENCE", "EARLY_ADULTHOOD", "MIDLIFE", "PRESENT", "SYNTHESIS"],
-        "46_60": ["GREETING", "AGE_SELECTION", "CHILDHOOD", "ADOLESCENCE", "EARLY_ADULTHOOD", "MIDLIFE", "PRESENT", "SYNTHESIS"],
-        "61_plus": ["GREETING", "AGE_SELECTION", "CHILDHOOD", "ADOLESCENCE", "EARLY_ADULTHOOD", "MIDLIFE", "PRESENT", "SYNTHESIS"],
+        "under_18": [
+            "GREETING",
+            "AGE_SELECTION",
+            "CHILDHOOD",
+            "ADOLESCENCE",
+            "PRESENT",
+            "SYNTHESIS",
+        ],
+        "18_30": [
+            "GREETING",
+            "AGE_SELECTION",
+            "CHILDHOOD",
+            "ADOLESCENCE",
+            "EARLY_ADULTHOOD",
+            "PRESENT",
+            "SYNTHESIS",
+        ],
+        "31_45": [
+            "GREETING",
+            "AGE_SELECTION",
+            "CHILDHOOD",
+            "ADOLESCENCE",
+            "EARLY_ADULTHOOD",
+            "MIDLIFE",
+            "PRESENT",
+            "SYNTHESIS",
+        ],
+        "46_60": [
+            "GREETING",
+            "AGE_SELECTION",
+            "CHILDHOOD",
+            "ADOLESCENCE",
+            "EARLY_ADULTHOOD",
+            "MIDLIFE",
+            "PRESENT",
+            "SYNTHESIS",
+        ],
+        "61_plus": [
+            "GREETING",
+            "AGE_SELECTION",
+            "CHILDHOOD",
+            "ADOLESCENCE",
+            "EARLY_ADULTHOOD",
+            "MIDLIFE",
+            "PRESENT",
+            "SYNTHESIS",
+        ],
     }
 
     PHASES = {
@@ -189,7 +231,10 @@ Rules:
     def __init__(self):
         super().__init__()
         self.age_range: Optional[str] = None  # Will be set after age selection
-        self.phase_order = ["GREETING", "AGE_SELECTION"]  # Initial phases, will be extended after age selection
+        self.phase_order = [
+            "GREETING",
+            "AGE_SELECTION",
+        ]  # Initial phases, will be extended after age selection
         self.phase = self.get_initial_phase()
 
     @property
@@ -261,4 +306,3 @@ Rules:
         else:
             # Default to full phase order if age not set
             self.phase_order = self.AGE_PHASE_MAPPING["61_plus"]
-    
