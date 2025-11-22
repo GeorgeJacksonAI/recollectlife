@@ -14,7 +14,7 @@ const STORY_ROUTES = {
 function App() {
   // Estado para armazenar as mensagens do chat
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Welcome to the Life Story Game! I\'ll guide you through telling your life story to create a personalized board game. Are you ready to begin?' }
+    { role: 'assistant', content: 'Welcome! I\'m here to help you tell your life story chronologically. Your story will be organized into chapters that follow your life timeline, capturing each era of your journey. Are you ready to begin?' }
   ])
 
   // Estado para o texto do input
@@ -28,28 +28,26 @@ function App() {
 
   // Phase tracking (client-side state for stateless backend)
   const [currentPhase, setCurrentPhase] = useState('GREETING')
-  const [selectedRoute, setSelectedRoute] = useState(null)
+  const [selectedRoute, setSelectedRoute] = useState('1')  // Default to Chronological Steward
   const [customRouteDescription, setCustomRouteDescription] = useState(null)
   const [showRouteSelection, setShowRouteSelection] = useState(false)
+  const [ageRange, setAgeRange] = useState(null)
+  const [showAgeSelection, setShowAgeSelection] = useState(false)
 
-  // Handle route selection
-  const handleRouteSelect = async (routeNumber) => {
-    setSelectedRoute(routeNumber)
-    setShowRouteSelection(false)
-
-    // If route 7, show custom input prompt
-    if (routeNumber === "7") {
-      const customMessage = { role: 'assistant', content: 'Please describe your preferred approach to telling your story:' }
-      setMessages([...messages,
-      { role: 'user', content: routeNumber },
-        customMessage
-      ])
-      // Don't advance phase yet - need description first
-    } else {
-      // Send route selection to backend and advance phase
-      setCurrentPhase('QUESTION_1')  // Move to first question
-      await sendMessage(routeNumber)
+  // Handle age range selection
+  const handleAgeSelect = async (ageNumber) => {
+    const ageMap = {
+      "1": "under_18",
+      "2": "18_30",
+      "3": "31_45",
+      "4": "46_60",
+      "5": "61_plus",
     }
+    setAgeRange(ageMap[ageNumber])
+    setShowAgeSelection(false)
+    
+    // Send age selection to backend
+    await sendMessage(ageNumber)
   }
 
   // Função que é chamada quando o formulário é enviado
@@ -80,9 +78,9 @@ function App() {
         },
         body: JSON.stringify({
           messages: updatedMessages,
+          route: selectedRoute,
           phase: currentPhase,
-          selected_route: selectedRoute,
-          custom_route_description: customRouteDescription
+          age_range: ageRange
         }),
       })
 
@@ -96,28 +94,25 @@ function App() {
       // Handle phase advancement logic (client-side)
       const lastMessage = userMessage.toLowerCase()
 
-      // Advance from GREETING to ROUTE_SELECTION on affirmative
+      // Advance from GREETING to AGE_SELECTION on affirmative
       if (currentPhase === 'GREETING' && (lastMessage.includes('yes') || lastMessage.includes('sim') || lastMessage.includes('ready') || lastMessage.includes('ok'))) {
-        setCurrentPhase('ROUTE_SELECTION')
-        setShowRouteSelection(true)
+        setCurrentPhase('AGE_SELECTION')
+        setShowAgeSelection(true)
       }
 
-      // Advance from ROUTE_SELECTION when route selected (handled in handleRouteSelect)
+      // Advance from AGE_SELECTION to CHILDHOOD when age selected
+      if (currentPhase === 'AGE_SELECTION' && userMessage.trim().match(/^[1-5]$/)) {
+        setCurrentPhase('CHILDHOOD')
+      }
 
-      // Advance from QUESTION phases on any response
-      if (currentPhase.startsWith('QUESTION_') && userMessage.trim().length > 0) {
-        const questionNum = parseInt(currentPhase.split('_')[1])
-        if (questionNum < 6) {
-          setCurrentPhase(`QUESTION_${questionNum + 1}`)
-        } else {
-          setCurrentPhase('SYNTHESIS')
+      // Advance through interview phases on any response
+      if (['CHILDHOOD', 'ADOLESCENCE', 'EARLY_ADULTHOOD', 'MIDLIFE', 'PRESENT'].includes(currentPhase) && userMessage.trim().length > 0) {
+        // Determine next phase based on age range and current phase
+        const phaseOrder = ['CHILDHOOD', 'ADOLESCENCE', 'EARLY_ADULTHOOD', 'MIDLIFE', 'PRESENT', 'SYNTHESIS']
+        const currentIndex = phaseOrder.indexOf(currentPhase)
+        if (currentIndex >= 0 && currentIndex < phaseOrder.length - 1) {
+          setCurrentPhase(phaseOrder[currentIndex + 1])
         }
-      }
-
-      // Handle route 7 custom description
-      if (selectedRoute === '7' && !customRouteDescription && userMessage.trim().length > 10) {
-        setCustomRouteDescription(userMessage.trim())
-        setCurrentPhase('QUESTION_1')
       }
 
       // Adiciona a resposta do assistente
@@ -144,25 +139,30 @@ function App() {
         {currentPhase !== 'GREETING' && (
           <div className="text-sm text-gray-400 mt-1">
             Phase: {currentPhase}
-            {selectedRoute && selectedRoute !== "7" && ` | Route: ${STORY_ROUTES[selectedRoute]?.name}`}
-            {selectedRoute === "7" && ` | Route: Personal Route`}
+            {ageRange && ` | Age: ${ageRange.replace('_', ' ')}`}
           </div>
         )}
       </div>
 
-      {/* Route Selection UI */}
-      {showRouteSelection && (
+      {/* Age Selection UI */}
+      {showAgeSelection && (
         <div className="p-4 bg-gray-800 border-b border-gray-700">
-          <h2 className="text-xl font-semibold mb-4">Choose Your Storytelling Approach:</h2>
+          <h2 className="text-xl font-semibold mb-4">Select Your Age Range:</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {Object.entries(STORY_ROUTES).map(([num, route]) => (
+            {[
+              { num: "1", label: "Under 18", desc: "Your story is just beginning" },
+              { num: "2", label: "18-30", desc: "Early adulthood and discovery" },
+              { num: "3", label: "31-45", desc: "Building and growing" },
+              { num: "4", label: "46-60", desc: "Wisdom and experience" },
+              { num: "5", label: "61 and above", desc: "A lifetime of stories" },
+            ].map((age) => (
               <button
-                key={num}
-                onClick={() => handleRouteSelect(num)}
+                key={age.num}
+                onClick={() => handleAgeSelect(age.num)}
                 className="text-left p-4 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors border border-gray-600"
               >
-                <div className="font-semibold text-blue-400">{num}. {route.name}</div>
-                <div className="text-sm text-gray-300 mt-1">{route.description}</div>
+                <div className="font-semibold text-blue-400">{age.num}. {age.label}</div>
+                <div className="text-sm text-gray-300 mt-1">{age.desc}</div>
               </button>
             ))}
           </div>
