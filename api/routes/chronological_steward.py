@@ -1,18 +1,32 @@
 """Chronological Steward story route implementation."""
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from .base import StoryRoute
 
 
 class ChronologicalSteward(StoryRoute):
-    """Story route that captures life chronologically from birth to present."""
+    """Story route that captures life chronologically from birth to present.
+    
+    This route adapts interview phases based on the user's age, ensuring
+    questions are relevant to their life stage (e.g., adolescents skip midlife questions).
+    """
 
     ROUTE_INFO = {
         "name": "Chronological Steward",
         "persona": "Likes order, facts, and timelines.",
         "goal": "Capture your life story in sequential, linear order from birth to present.",
+        "presentation": "Your story will be organized chronologically into chapters that follow your life timeline, with each chapter capturing a distinct era of your journey.",
         "prompt_focus": "Let's start at the very beginning. What are your earliest significant memories?",
+    }
+
+    # Age range to phase mapping - determines which life stages to include
+    AGE_PHASE_MAPPING = {
+        "under_18": ["GREETING", "AGE_SELECTION", "CHILDHOOD", "ADOLESCENCE", "PRESENT", "SYNTHESIS"],
+        "18_30": ["GREETING", "AGE_SELECTION", "CHILDHOOD", "ADOLESCENCE", "EARLY_ADULTHOOD", "PRESENT", "SYNTHESIS"],
+        "31_45": ["GREETING", "AGE_SELECTION", "CHILDHOOD", "ADOLESCENCE", "EARLY_ADULTHOOD", "MIDLIFE", "PRESENT", "SYNTHESIS"],
+        "46_60": ["GREETING", "AGE_SELECTION", "CHILDHOOD", "ADOLESCENCE", "EARLY_ADULTHOOD", "MIDLIFE", "PRESENT", "SYNTHESIS"],
+        "61_plus": ["GREETING", "AGE_SELECTION", "CHILDHOOD", "ADOLESCENCE", "EARLY_ADULTHOOD", "MIDLIFE", "PRESENT", "SYNTHESIS"],
     }
 
     PHASES = {
@@ -25,10 +39,29 @@ Your role: Guide the user through telling their life story chronologically, from
 Current phase: GREETING
 - Welcome the user warmly
 - Explain: "I'm here to help you tell your life story chronologically."
-- Explain: "We'll start from your earliest memories and work through to today."
+- Explain: "Your story will be organized into chapters that follow your life timeline, capturing each era of your journey."
 - Ask: "Are you ready to begin? (Type 'yes' to start)"
 - Keep response SHORT (2-3 sentences max)
-- DO NOT ask interview questions yet""",
+- DO NOT ask for age yet - that comes next""",
+        },
+        "AGE_SELECTION": {
+            "description": "User selects their age range",
+            "system_instruction": """You are collecting age information to customize the interview.
+
+Current phase: AGE SELECTION
+
+Explain: "To customize the interview to your life stage, I need to know your age range."
+
+Present these options clearly:
+1. Under 18
+2. 18-30
+3. 31-45
+4. 46-60
+5. 61 and above
+
+Ask: "Please select your age range by typing the number (1-5)."
+
+Keep response SHORT and clear. DO NOT start the interview yet.""",
         },
         "CHILDHOOD": {
             "description": "Earliest memories and foundational years",
@@ -155,15 +188,8 @@ Rules:
 
     def __init__(self):
         super().__init__()
-        self.phase_order = [
-            "GREETING",
-            "CHILDHOOD",
-            "ADOLESCENCE",
-            "EARLY_ADULTHOOD",
-            "MIDLIFE",
-            "PRESENT",
-            "SYNTHESIS",
-        ]
+        self.age_range: Optional[str] = None  # Will be set after age selection
+        self.phase_order = ["GREETING", "AGE_SELECTION"]  # Initial phases, will be extended after age selection
         self.phase = self.get_initial_phase()
 
     @property
@@ -180,11 +206,19 @@ Rules:
         """Get the starting phase for this route."""
         return "GREETING"
 
+    def get_age_range(self) -> Optional[str]:
+        """Get the user's selected age range."""
+        return self.age_range
+
+    def is_age_selected(self) -> bool:
+        """Check if user has selected an age range."""
+        return self.age_range is not None
+
     def should_advance(self, user_message: str) -> bool:
         """Determine if conversation should advance to next phase.
 
-        For GREETING phase, only advance on affirmative responses.
-        For other phases, advance on any non-empty response.
+        Returns:
+            True if phase should advance, False otherwise
         """
         if self.phase == "GREETING":
             affirmative = [
@@ -199,5 +233,32 @@ Rules:
             ]
             return any(word in user_message.lower() for word in affirmative)
 
+        if self.phase == "AGE_SELECTION":
+            # Validate age range selection (1-5)
+            clean_message = user_message.strip()
+            if clean_message in ["1", "2", "3", "4", "5"]:
+                # Map number to age range key
+                age_map = {
+                    "1": "under_18",
+                    "2": "18_30",
+                    "3": "31_45",
+                    "4": "46_60",
+                    "5": "61_plus",
+                }
+                self.age_range = age_map[clean_message]
+                # Configure phase order based on age
+                self._configure_phases_for_age()
+                return True
+            return False
+
         # For all other phases, any non-empty response advances
         return len(user_message.strip()) > 0
+
+    def _configure_phases_for_age(self) -> None:
+        """Configure interview phases based on selected age range."""
+        if self.age_range and self.age_range in self.AGE_PHASE_MAPPING:
+            self.phase_order = self.AGE_PHASE_MAPPING[self.age_range]
+        else:
+            # Default to full phase order if age not set
+            self.phase_order = self.AGE_PHASE_MAPPING["61_plus"]
+    
