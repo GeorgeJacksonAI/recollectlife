@@ -95,10 +95,27 @@ def chat():
 
         # If age selection input provided, validate and advance phase
         if age_selection_input and current_phase == "AGE_SELECTION":
+            # Set route phase to AGE_SELECTION so should_advance works correctly
+            route.phase = "AGE_SELECTION"
             if route.should_advance(age_selection_input, explicit_transition=False):
                 current_phase = route.advance_phase()
                 print(f"[AGE] Selected: {age_selection_input} -> {route.age_range}")
                 print(f"[PHASE] Advanced to: {current_phase}")
+
+                # Return immediately without generating AI response
+                # Age selection is a silent operation - no chat message needed
+                response_data = {
+                    "response": "",  # Empty response - no AI message
+                    "model": "none",
+                    "attempts": 0,
+                    "phase": current_phase,
+                    "age_range": (
+                        route.get_age_range()
+                        if hasattr(route, "get_age_range")
+                        else None
+                    ),
+                }
+                return jsonify(response_data), 200
 
         # Get current phase if not provided
         if not current_phase:
