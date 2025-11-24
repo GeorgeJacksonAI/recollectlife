@@ -109,14 +109,22 @@ Keep response SHORT and clear. DO NOT start the interview yet.""",
             "description": "Earliest memories and foundational years",
             "system_instruction": """You are conducting a chronological life story interview. Phase: CHILDHOOD
 
-Your goal: Capture their earliest significant memories and foundational years (birth to age 12).
+Your goal: Deeply explore their earliest significant memories and foundational years (birth to age 12).
 
-Ask ONE warm, open-ended question:
-- "What are your earliest significant memories, and roughly what age were you?"
-- "Tell me about your childhood home and who was there with you."
-- "What's one memory from your first years that still stands out to you?"
+IMPORTANT: If this is the VERY FIRST message in this phase (user just transitioned from AGE_SELECTION):
+- Start with: "**CHILDHOOD** (Birth to Age 12)"
+- Then ask your opening question
 
-Keep it conversational (1-2 sentences). Don't over-explain. Just ask naturally.""",
+If this is their FIRST response in this phase:
+- Ask a warm, open-ended question about their earliest memories
+- Examples: "What are your earliest significant memories?" or "Tell me about your childhood home and who was there with you."
+
+If they've already shared memories:
+- Ask thoughtful FOLLOW-UP questions to go deeper
+- Explore emotions, specific moments, relationships, places
+- Examples: "Tell me more about [specific person/place they mentioned]" or "How did that experience shape you?" or "What were you feeling during that time?"
+
+Keep it conversational (1-2 sentences). Be genuinely curious. The user will click "Next Phase" when ready to move on.""",
         },
         "ADOLESCENCE": {
             "description": "Teenage years and growing up",
@@ -124,14 +132,22 @@ Keep it conversational (1-2 sentences). Don't over-explain. Just ask naturally."
 
 Context: User shared childhood memories. Now explore ages 13-18.
 
-Your goal: Capture pivotal moments from teenage years - friendships, challenges, discoveries.
+Your goal: Deeply explore pivotal moments from teenage years - friendships, challenges, identity, discoveries.
 
-Ask ONE question:
-- "What was significant about your teenage years?"
-- "Tell me about a formative friendship or moment during your adolescence."
-- "What did you care about most between ages 13-18?"
+IMPORTANT: If user just clicked "Next Phase" (transitioning from CHILDHOOD):
+- Start with: "**ADOLESCENCE** (Ages 13-18)"
+- Then ask your opening question
 
-Keep it conversational (1-2 sentences).""",
+If this is their FIRST response in this phase:
+- Ask about significant experiences during their teenage years
+- Examples: "What was significant about your teenage years?" or "Tell me about a formative friendship during adolescence."
+
+If they've already shared teenage memories:
+- Ask follow-up questions to deepen understanding
+- Explore specific moments, relationships, challenges, turning points
+- Examples: "How did that friendship change you?" or "What were you struggling with during that time?" or "Tell me more about [specific event]."
+
+Keep it conversational (1-2 sentences). Be empathetic and curious. User will advance when ready.""",
         },
         "EARLY_ADULTHOOD": {
             "description": "Late teens to early 30s - choices and direction",
@@ -139,14 +155,21 @@ Keep it conversational (1-2 sentences).""",
 
 Context: User shared childhood and adolescence. Now explore ages 19-35.
 
-Your goal: Capture decisions, relationships, and the path they chose during this pivotal phase.
+Your goal: Deeply explore decisions, relationships, career, identity formation during this pivotal phase.
 
-Ask ONE question:
-- "What major choices did you make in your 20s and 30s?"
-- "Tell me about a significant relationship or experience during this time."
-- "How did you figure out what direction to take with your life?"
+IMPORTANT: If user just clicked "Next Phase" (transitioning from ADOLESCENCE):
+- Start with: "**EARLY ADULTHOOD** (Ages 19-35)"
+- Then ask your opening question
 
-Keep it conversational (1-2 sentences).""",
+If this is their FIRST response in this phase:
+- Ask about major choices and direction during their 20s/early 30s
+- Examples: "What major choices did you make in your 20s and 30s?" or "How did you figure out your path?"
+
+If they've already shared early adulthood experiences:
+- Ask follow-ups to explore specific moments, relationships, struggles, achievements
+- Examples: "What was challenging about that decision?" or "Tell me about a relationship that shaped you during this time" or "How did [experience] change your direction?"
+
+Keep it conversational (1-2 sentences). Be curious about their journey. User advances when ready.""",
         },
         "MIDLIFE": {
             "description": "Middle years and major themes",
@@ -154,14 +177,21 @@ Keep it conversational (1-2 sentences).""",
 
 Context: User shared their journey through early adulthood. Now explore their middle years.
 
-Your goal: Capture major achievements, challenges, and evolving understanding of life.
+Your goal: Deeply explore major achievements, challenges, growth, wisdom gained during middle years.
 
-Ask ONE question:
-- "What were the defining moments or themes of your middle years?"
-- "Tell me about a period of significant growth or change."
-- "What accomplishments or challenges shaped who you are today?"
+IMPORTANT: If user just clicked "Next Phase" (transitioning from EARLY_ADULTHOOD):
+- Start with: "**MIDLIFE** (Approximately Ages 36-60)"
+- Then ask your opening question
 
-Keep it conversational (1-2 sentences).""",
+If this is their FIRST response in this phase:
+- Ask about defining moments or themes of their middle years
+- Examples: "What were the defining moments of your middle years?" or "Tell me about significant growth or change during this period."
+
+If they've already shared midlife experiences:
+- Ask follow-ups to explore depth, meaning, lessons learned
+- Examples: "What did you learn from that challenge?" or "How did that accomplishment change your perspective?" or "Tell me more about [specific experience]."
+
+Keep it conversational (1-2 sentences). Be reflective and curious. User advances when ready.""",
         },
         "PRESENT": {
             "description": "Current chapter and reflection",
@@ -169,14 +199,21 @@ Keep it conversational (1-2 sentences).""",
 
 Context: User has walked through their entire timeline. Now explore where they are now.
 
-Your goal: Capture their current chapter and how they see their journey.
+Your goal: Deeply explore their current chapter, how they see their journey, and what matters most now.
 
-Ask ONE question:
-- "Where are you now in your life, and what brought you here?"
-- "How do you see your life story coming together?"
-- "What do you want people to know about who you are today?"
+IMPORTANT: If user just clicked "Next Phase" (transitioning from previous phase):
+- Start with: "**PRESENT DAY** (Your Life Now)"
+- Then ask your opening question
 
-Keep it conversational (1-2 sentences).""",
+If this is their FIRST response in this phase:
+- Ask about where they are now and how they got here
+- Examples: "Where are you now in your life?" or "How do you see your life story coming together?"
+
+If they've already shared about their present:
+- Ask follow-ups about meaning, purpose, hopes, reflections on their journey
+- Examples: "What matters most to you right now?" or "How do you feel about the journey you've taken?" or "What do you want people to understand about who you are today?"
+
+Keep it conversational (1-2 sentences). Be reflective and honoring. User advances to synthesis when ready.""",
         },
         "SYNTHESIS": {
             "description": "Synthesize story structure and key moments",
@@ -259,12 +296,19 @@ Rules:
         """Check if user has selected an age range."""
         return self.age_range is not None
 
-    def should_advance(self, user_message: str) -> bool:
+    def should_advance(
+        self, user_message: str, explicit_transition: bool = False
+    ) -> bool:
         """Determine if conversation should advance to next phase.
 
+        Args:
+            user_message: User's message content
+            explicit_transition: True if user clicked "Next Phase" button
+
         Returns:
-            True if phase should advance, False otherwise
+            True if phase should advance, False to stay in current phase
         """
+        # GREETING: advance on affirmative response
         if self.phase == "GREETING":
             affirmative = [
                 "yes",
@@ -278,11 +322,10 @@ Rules:
             ]
             return any(word in user_message.lower() for word in affirmative)
 
+        # AGE_SELECTION: advance when valid age selected
         if self.phase == "AGE_SELECTION":
-            # Validate age range selection (1-5)
             clean_message = user_message.strip()
             if clean_message in ["1", "2", "3", "4", "5"]:
-                # Map number to age range key
                 age_map = {
                     "1": "under_18",
                     "2": "18_30",
@@ -291,13 +334,28 @@ Rules:
                     "5": "61_plus",
                 }
                 self.age_range = age_map[clean_message]
-                # Configure phase order based on age
                 self._configure_phases_for_age()
                 return True
             return False
 
-        # For all other phases, any non-empty response advances
-        return len(user_message.strip()) > 0
+        # Interview phases: ONLY advance on explicit user request (button click)
+        # This allows multiple questions within each phase
+        interview_phases = [
+            "CHILDHOOD",
+            "ADOLESCENCE",
+            "EARLY_ADULTHOOD",
+            "MIDLIFE",
+            "PRESENT",
+        ]
+        if self.phase in interview_phases:
+            return explicit_transition
+
+        # SYNTHESIS: never advance (final phase)
+        if self.phase == "SYNTHESIS":
+            return False
+
+        # Default: advance on explicit transition only
+        return explicit_transition
 
     def _configure_phases_for_age(self) -> None:
         """Configure interview phases based on selected age range."""

@@ -76,6 +76,9 @@ def validate_payload(data: Dict) -> tuple[bool, str, Dict]:
     # Get age range (for age-aware routes)
     age_range = data.get("age_range")
 
+    # Get explicit transition flag (user clicked "Next Phase" button)
+    advance_phase = data.get("advance_phase", False)
+
     return (
         True,
         "",
@@ -84,6 +87,7 @@ def validate_payload(data: Dict) -> tuple[bool, str, Dict]:
             "route_id": route_id,
             "phase": phase,
             "age_range": age_range,
+            "advance_phase": advance_phase,
         },
     )
 
@@ -219,6 +223,7 @@ class handler(BaseHTTPRequestHandler):
             route_id = validated["route_id"]
             provided_phase = validated["phase"]
             age_range = validated["age_range"]
+            advance_phase = validated["advance_phase"]
 
             # Instantiate route and reconstruct state
             route_class = ROUTE_REGISTRY[route_id]
@@ -229,6 +234,19 @@ class handler(BaseHTTPRequestHandler):
                 current_phase = provided_phase
             else:
                 current_phase = get_current_phase_from_route(route, messages)
+
+            # Handle explicit phase advancement if requested
+            if advance_phase:
+                route.phase = current_phase
+                # Get last user message for validation
+                last_user_msg = next(
+                    (m["content"] for m in reversed(messages) if m["role"] == "user"),
+                    "",
+                )
+                # Check if should advance (with explicit_transition=True)
+                if route.should_advance(last_user_msg, explicit_transition=True):
+                    current_phase = route.advance_phase()
+                    print(f"[PHASE] Advanced to: {current_phase}")
 
             # Get system instruction for current phase
             try:

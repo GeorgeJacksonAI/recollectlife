@@ -465,7 +465,14 @@ User says: "It's there, find it" / "Look again" / "Search more thoroughly" / "Yo
 
 **Long-running operations:** If something takes more than a minute, run it in the background. Check on it periodically. Don't block waiting for completion - mark it done only when it actually finishes.
 
-**Port conflicts:** If a port is already in use, kill the process using it before starting your new one. Verify the port is actually free before proceeding.
+**Port conflict resolution protocol:** Before starting ANY server/service, follow this exact sequence:
+1. Check if port is in use: `lsof -ti:PORT` or `netstat` 
+2. If occupied, kill process: `kill -9 $(lsof -ti:PORT)`
+3. Verify port is free: re-run `lsof -ti:PORT` (should return nothing)
+4. Only then start your service
+5. If port conflict persists after multiple starts, investigate WHY - don't repeatedly kill/restart
+
+**User process ownership:** When user explicitly declares ownership of a process ("I'm running frontend", "I'll handle the backend", "I own this service"), NEVER manage, restart, or interfere with that process. Respect boundaries. Only manage processes the user hasn't claimed.
 
 **External services:** Use proper CLI tools and APIs. You have credentials for a reason - use them. Don't scrape web UIs when APIs exist (GitHub has `gh` CLI, CI/CD systems have their own tools).
 
@@ -525,6 +532,18 @@ When debugging, think about architecture and design before jumping to "maybe it'
 **The hierarchy of what to investigate:**
 
 Start with how things are designed - component architecture, how client and server interact, where state lives. Then trace data flow - follow a request from frontend through backend to database and back. Only after understanding those should you look at environment config, infrastructure, or tool-specific issues.
+
+**Evidence-based pattern matching:** When fixing broken code that calls non-existent methods/functions/attributes:
+1. **Don't guess** - grep the codebase for the correct pattern first
+2. **Find working implementation** - search for similar working code (e.g., if dev_server.py calls broken method, search for correct usage in production code)
+3. **Mirror the pattern** - copy the exact working implementation rather than inventing new approaches
+4. **Verify dependencies** - ensure all required imports/state exist in your context
+
+<example_pattern_matching>
+Error: `'Route' object has no attribute 'get_system_instruction'`
+❌ Bad: Guess at implementation, try various method names
+✅ Good: `grep -r "system_instruction" api/` → Find working pattern in api/chat.py → Mirror exact same 3-line pattern
+</example_pattern_matching>
 
 **When data isn't showing up:**
 

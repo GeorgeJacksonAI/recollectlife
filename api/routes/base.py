@@ -42,10 +42,20 @@ class StoryRoute(ABC):
             raise ValueError("Phase not initialized")
         return self.interview_phases[self.phase]
 
-    def should_advance(self, user_message: str) -> bool:
-        """Determine if conversation should advance to next phase."""
-        # Default: any non-empty response advances
-        return len(user_message.strip()) > 0
+    def should_advance(
+        self, user_message: str, explicit_transition: bool = False
+    ) -> bool:
+        """Determine if conversation should advance to next phase.
+
+        Args:
+            user_message: The user's message content
+            explicit_transition: If True, user explicitly requested phase transition (via button)
+
+        Returns:
+            True if phase should advance, False to stay in current phase
+        """
+        # Default: only advance on explicit transition request
+        return explicit_transition
 
     def advance_phase(self) -> str:
         """Move to next phase and return it."""

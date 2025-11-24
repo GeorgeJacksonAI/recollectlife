@@ -34,6 +34,12 @@ function App() {
   const [ageRange, setAgeRange] = useState(null)
   const [showAgeSelection, setShowAgeSelection] = useState(false)
 
+  // Define interview phases that allow multi-question conversations
+  const INTERVIEW_PHASES = ['CHILDHOOD', 'ADOLESCENCE', 'EARLY_ADULTHOOD', 'MIDLIFE', 'PRESENT']
+
+  // Check if current phase is an interview phase (shows "Next Phase" button)
+  const isInterviewPhase = INTERVIEW_PHASES.includes(currentPhase)
+
   // Handle age range selection
   const handleAgeSelect = async (ageNumber) => {
     const ageMap = {
@@ -54,15 +60,27 @@ function App() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!input.trim() || isLoading) return
-    await sendMessage(input.trim())
+    await sendMessage(input.trim(), false) // false = not advancing phase
+  }
+
+  // Handle explicit phase advancement (Next Phase button clicked)
+  const handleNextPhase = async () => {
+    if (isLoading) return
+    await sendMessage('__ADVANCE_PHASE__', true) // true = advancing phase
   }
 
   // Send message to backend
-  const sendMessage = async (userMessage) => {
-    // Adiciona a mensagem do usuário ao array de mensagens
-    const newUserMessage = { role: 'user', content: userMessage }
-    const updatedMessages = [...messages, newUserMessage]
-    setMessages(updatedMessages)
+  const sendMessage = async (userMessage, advancePhase = false) => {
+    // For phase advancement, don't add user message to chat
+    let updatedMessages
+    if (advancePhase) {
+      updatedMessages = [...messages]
+    } else {
+      // Adiciona a mensagem do usuário ao array de mensagens
+      const newUserMessage = { role: 'user', content: userMessage }
+      updatedMessages = [...messages, newUserMessage]
+      setMessages(updatedMessages)
+    }
 
     // Limpa o input e erros anteriores
     setInput('')
@@ -80,7 +98,8 @@ function App() {
           messages: updatedMessages,
           route: selectedRoute,
           phase: currentPhase,
-          age_range: ageRange
+          age_range: ageRange,
+          advance_phase: advancePhase  // Signal explicit phase transition
         }),
       })
 
@@ -91,7 +110,13 @@ function App() {
 
       const data = await response.json()
 
-      // Handle phase advancement logic (client-side)
+      // Update phase from backend response (backend handles advancement)
+      if (data.phase && data.phase !== currentPhase) {
+        setCurrentPhase(data.phase)
+        console.log(`[PHASE] Advanced to: ${data.phase}`)
+      }
+
+      // Handle special phase transitions that need UI updates
       const lastMessage = userMessage.toLowerCase()
 
       // Advance from GREETING to AGE_SELECTION on affirmative
@@ -103,16 +128,6 @@ function App() {
       // Advance from AGE_SELECTION to CHILDHOOD when age selected
       if (currentPhase === 'AGE_SELECTION' && userMessage.trim().match(/^[1-5]$/)) {
         setCurrentPhase('CHILDHOOD')
-      }
-
-      // Advance through interview phases on any response
-      if (['CHILDHOOD', 'ADOLESCENCE', 'EARLY_ADULTHOOD', 'MIDLIFE', 'PRESENT'].includes(currentPhase) && userMessage.trim().length > 0) {
-        // Determine next phase based on age range and current phase
-        const phaseOrder = ['CHILDHOOD', 'ADOLESCENCE', 'EARLY_ADULTHOOD', 'MIDLIFE', 'PRESENT', 'SYNTHESIS']
-        const currentIndex = phaseOrder.indexOf(currentPhase)
-        if (currentIndex >= 0 && currentIndex < phaseOrder.length - 1) {
-          setCurrentPhase(phaseOrder[currentIndex + 1])
-        }
       }
 
       // Adiciona a resposta do assistente
@@ -205,6 +220,24 @@ function App() {
           </div>
         )}
       </div>
+
+      {/* Next Phase Button - shown during interview phases */}
+      {isInterviewPhase && !isLoading && (
+        <div className="px-4 py-2 border-t border-gray-700">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-gray-400 flex-1">
+              Continue sharing about this period, or move forward when ready
+            </p>
+            <button
+              onClick={handleNextPhase}
+              className="py-2 px-4 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300 hover:text-white transition-colors focus:outline-none focus:ring-1 focus:ring-gray-500 flex items-center gap-2 whitespace-nowrap"
+            >
+              <span>Next chapter</span>
+              <span>→</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Formulário de input - fica fixo na parte inferior */}
       <form onSubmit={handleSubmit} className="p-4 border-t border-gray-700">

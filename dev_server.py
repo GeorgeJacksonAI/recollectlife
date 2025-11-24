@@ -79,8 +79,9 @@ def chat():
 
         messages = validated_data["messages"]
         route_id = validated_data["route_id"]
-        current_phase = validated_data.get("current_phase")
+        current_phase = validated_data.get("phase")
         age_range = validated_data.get("age_range")
+        advance_phase = validated_data.get("advance_phase", False)
 
         # Get route class
         route_class = ROUTE_REGISTRY.get(route_id)
@@ -93,6 +94,18 @@ def chat():
         # Get current phase if not provided
         if not current_phase:
             current_phase = get_current_phase_from_route(route, messages)
+
+        # Handle explicit phase advancement if requested
+        if advance_phase:
+            route.phase = current_phase
+            # Get last user message for validation
+            last_user_msg = next(
+                (m["content"] for m in reversed(messages) if m["role"] == "user"), ""
+            )
+            # Check if should advance (with explicit_transition=True)
+            if route.should_advance(last_user_msg, explicit_transition=True):
+                current_phase = route.advance_phase()
+                print(f"[PHASE] Advanced to: {current_phase}")
 
         # Get system instruction for current phase
         try:
