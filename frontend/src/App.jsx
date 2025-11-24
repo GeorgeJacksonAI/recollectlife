@@ -119,18 +119,42 @@ function App() {
       const data = await response.json()
 
       // Update phase from backend
-      if (data.phase && data.phase !== currentPhase) {
-        setCurrentPhase(data.phase)
-        console.log(`[PHASE] Advanced to: ${data.phase}`)
+      const newPhase = data.phase
+      const newAgeRange = data.age_range
+
+      if (newPhase && newPhase !== currentPhase) {
+        setCurrentPhase(newPhase)
+        console.log(`[PHASE] Advanced to: ${newPhase}`)
       }
 
-      // Advance to CHILDHOOD after age selection
-      if (currentPhase === 'AGE_SELECTION') {
-        setCurrentPhase('CHILDHOOD')
-      }
+      // After successful age selection, get opening prompt for new phase
+      // Backend returns empty response for age selection, so we need a second call
+      if (newPhase && newPhase !== 'AGE_SELECTION' && (!data.response || !data.response.trim())) {
+        // Make second API call to get opening prompt for CHILDHOOD
+        const promptResponse = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages: messages,  // Current messages (greeting + "yes")
+            route: selectedRoute,
+            phase: newPhase,  // Use new phase (CHILDHOOD)
+            age_range: newAgeRange,  // Use newly selected age range
+            selected_tags: selectedTags
+          }),
+        })
 
-      // Add AI response to chat (AI won't have seen the "5")
-      setMessages([...messages, { role: 'assistant', content: data.response }])
+        if (promptResponse.ok) {
+          const promptData = await promptResponse.json()
+          if (promptData.response && promptData.response.trim()) {
+            setMessages([...messages, { role: 'assistant', content: promptData.response }])
+          }
+        }
+      } else if (data.response && data.response.trim()) {
+        // Add AI response if there is content (shouldn't happen for age selection)
+        setMessages([...messages, { role: 'assistant', content: data.response }])
+      }
 
     } catch (err) {
       console.error('Error calling API:', err)
