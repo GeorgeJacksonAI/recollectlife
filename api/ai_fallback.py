@@ -239,3 +239,41 @@ def run_gemini_fallback(
         "attempts": len(model_cascade),
         "error": "Failed to generate response with any model",
     }
+
+
+def generate_summary(
+    messages: List[Dict[str, str]],
+    models: Optional[List[str]] = None,
+    api_key: Optional[str] = None,
+) -> Dict:
+    """
+    Generate a concise narrative summary of the user's story so far.
+
+    Args:
+        messages: Full conversation history
+        models: Optional list of models to try
+        api_key: Optional API key
+
+    Returns:
+        Dict with keys: success, content (summary), model, error
+    """
+    system_instruction = (
+        "You are a biographer's assistant. Your task is to read the conversation history "
+        "and produce a concise, narrative summary of the user's life story as revealed so far. "
+        "Focus on facts, key events, and emotional themes. "
+        "Do NOT include the interviewer's questions or the process itself. "
+        "Write in the third person (e.g., 'The user grew up in...'). "
+        "Keep it under 200 words. "
+        "If the history is empty or just greetings, return 'No story details shared yet.'"
+    )
+
+    # Filter messages to only include user content for the summary context?
+    # Actually, the full context is better so the AI understands the flow.
+    # But we want to summarize the *user's* story.
+
+    return run_gemini_fallback(
+        messages=messages,
+        system_instruction=system_instruction,
+        models=models,
+        api_key=api_key,
+    )

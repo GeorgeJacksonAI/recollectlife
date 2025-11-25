@@ -94,8 +94,9 @@ def chat():
         route = reconstruct_route_state(route_class, messages, age_range)
 
         # If age selection input provided, validate and advance phase
-        if age_selection_input and current_phase == "AGE_SELECTION":
+        if age_selection_input:
             # Set route phase to AGE_SELECTION so should_advance works correctly
+            # We trust the input presence over the provided phase
             route.phase = "AGE_SELECTION"
             if route.should_advance(age_selection_input, explicit_transition=False):
                 current_phase = route.advance_phase()
@@ -115,6 +116,17 @@ def chat():
                         else None
                     ),
                 }
+
+                # Add phase order info if available
+                if hasattr(route, "phase_order"):
+                    response_data["phase_order"] = route.phase_order
+                    try:
+                        response_data["phase_index"] = route.phase_order.index(
+                            current_phase
+                        )
+                    except ValueError:
+                        response_data["phase_index"] = -1
+
                 return jsonify(response_data), 200
 
         # Get current phase if not provided
@@ -192,6 +204,14 @@ def chat():
         if hasattr(route, "get_age_range") and route.get_age_range():
             response_data["age_range"] = route.get_age_range()
 
+        # Add phase order info if available
+        if hasattr(route, "phase_order"):
+            response_data["phase_order"] = route.phase_order
+            try:
+                response_data["phase_index"] = route.phase_order.index(current_phase)
+            except ValueError:
+                response_data["phase_index"] = -1
+
         return jsonify(response_data), 200
 
     except Exception as e:
@@ -200,6 +220,32 @@ def chat():
 
         traceback.print_exc()
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+
+
+@app.route("/api/summary", methods=["POST", "OPTIONS"])
+def summary():
+    """Handle summary endpoint."""
+    if request.method == "OPTIONS":
+        return "", 200
+
+    try:
+        from api.ai_fallback import generate_summary
+
+        data = request.get_json()
+        messages = data.get("messages", [])
+
+        if not messages:
+            return jsonify({"error": "Messages required"}), 400
+
+        result = generate_summary(messages=messages)
+
+        if not result["success"]:
+            return jsonify({"error": result["error"]}), 500
+
+        return jsonify({"summary": result["content"]}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
@@ -212,6 +258,7 @@ if __name__ == "__main__":
     print(f"   GET  http://localhost:5000/api/health")
     print(f"   GET  http://localhost:5000/api/model-status")
     print(f"   POST http://localhost:5000/api/chat")
+    print(f"   POST http://localhost:5000/api/summary")
     print(f"\n💡 Configure frontend to proxy /api/* to http://localhost:5000\n")
 
-    app.run(debug=True, port=5000, host="0.0.0.0")
+    app.run(debug=False, port=5000, host="0.0.0.0")

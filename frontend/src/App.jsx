@@ -45,6 +45,14 @@ function App() {
   // Tag selection state
   const [selectedTags, setSelectedTags] = useState([])
 
+  // Estado para o resumo da história
+  const [storySummary, setStorySummary] = useState("No story details shared yet.")
+  const [isSummarizing, setIsSummarizing] = useState(false)
+
+  // Phase timeline state
+  const [phaseOrder, setPhaseOrder] = useState([])
+  const [phaseIndex, setPhaseIndex] = useState(-1)
+
   // Define interview phases that allow multi-question conversations
   const INTERVIEW_PHASES = ['CHILDHOOD', 'ADOLESCENCE', 'EARLY_ADULTHOOD', 'MIDLIFE', 'PRESENT']
 
@@ -90,6 +98,32 @@ function App() {
     await sendMessage('__ADVANCE_PHASE__', true) // true = advancing phase
   }
 
+  // Fetch story summary from backend
+  const fetchSummary = async (currentMessages) => {
+    // Don't summarize if only greeting
+    if (currentMessages.length <= 2) return
+
+    setIsSummarizing(true)
+    try {
+      const response = await fetch('/api/summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: currentMessages }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.summary) {
+          setStorySummary(data.summary)
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch summary:", err)
+    } finally {
+      setIsSummarizing(false)
+    }
+  }
+
   // Send age selection without adding to visible conversation
   const sendAgeSelection = async (ageNumber) => {
     setIsLoading(true)
@@ -122,6 +156,9 @@ function App() {
       const newPhase = data.phase
       const newAgeRange = data.age_range
 
+      if (data.phase_order) setPhaseOrder(data.phase_order)
+      if (data.phase_index !== undefined) setPhaseIndex(data.phase_index)
+
       if (newPhase && newPhase !== currentPhase) {
         setCurrentPhase(newPhase)
         console.log(`[PHASE] Advanced to: ${newPhase}`)
@@ -148,12 +185,16 @@ function App() {
         if (promptResponse.ok) {
           const promptData = await promptResponse.json()
           if (promptData.response && promptData.response.trim()) {
-            setMessages([...messages, { role: 'assistant', content: promptData.response }])
+            const newMsgs = [...messages, { role: 'assistant', content: promptData.response }]
+            setMessages(newMsgs)
+            fetchSummary(newMsgs)
           }
         }
       } else if (data.response && data.response.trim()) {
         // Add AI response if there is content (shouldn't happen for age selection)
-        setMessages([...messages, { role: 'assistant', content: data.response }])
+        const newMsgs = [...messages, { role: 'assistant', content: data.response }]
+        setMessages(newMsgs)
+        fetchSummary(newMsgs)
       }
 
     } catch (err) {
@@ -211,6 +252,9 @@ function App() {
       const data = await response.json()
 
       // Update phase from backend response (backend handles advancement)
+      if (data.phase_order) setPhaseOrder(data.phase_order)
+      if (data.phase_index !== undefined) setPhaseIndex(data.phase_index)
+
       if (data.phase && data.phase !== currentPhase) {
         setCurrentPhase(data.phase)
         console.log(`[PHASE] Advanced to: ${data.phase}`)
@@ -229,7 +273,11 @@ function App() {
       // This code path is for manual text input (if user types "5" instead of clicking)
 
       // Adiciona a resposta do assistente
-      setMessages([...updatedMessages, { role: 'assistant', content: data.response }])
+      const newMessages = [...updatedMessages, { role: 'assistant', content: data.response }]
+      setMessages(newMessages)
+
+      // Update summary after AI response
+      fetchSummary(newMessages)
 
     } catch (err) {
       console.error('Error calling API:', err)
@@ -248,11 +296,40 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <div className="p-4 border-b border-gray-700">
-        <h1 className="text-2xl font-bold">Life Story Game</h1>
-        {currentPhase !== 'GREETING' && (
-          <div className="text-sm text-gray-400 mt-1">
-            Phase: {currentPhase}
-            {ageRange && ` | Age: ${ageRange.replace('_', ' ')}`}
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-2xl font-bold">Life Story Game</h1>
+          {currentPhase !== 'GREETING' && (
+            <div className="text-sm text-gray-400">
+              {ageRange && `Age: ${ageRange.replace('_', ' ')}`}
+            </div>
+          )}
+        </div>
+
+        {/* Phase Timeline */}
+        {phaseOrder.length > 0 && (
+          <div className="flex items-center gap-1 overflow-x-auto pb-2 scrollbar-thin">
+            {phaseOrder.map((phase, idx) => {
+              // Determine status: completed, current, or future
+              let status = 'future'
+              if (idx < phaseIndex) status = 'completed'
+              if (idx === phaseIndex) status = 'current'
+
+              return (
+                <div key={phase} className="flex items-center shrink-0">
+                  <div className={`
+                    px-3 py-1 rounded-full text-xs font-medium transition-colors
+                    ${status === 'completed' ? 'bg-green-900 text-green-300 border border-green-700' : ''}
+                    ${status === 'current' ? 'bg-blue-600 text-white border border-blue-500 shadow-lg shadow-blue-900/50' : ''}
+                    ${status === 'future' ? 'bg-gray-800 text-gray-500 border border-gray-700' : ''}
+                  `}>
+                    {phase.replace('_', ' ')}
+                  </div>
+                  {idx < phaseOrder.length - 1 && (
+                    <div className={`w-4 h-0.5 mx-1 ${idx < phaseIndex ? 'bg-green-800' : 'bg-gray-800'}`} />
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
@@ -359,6 +436,26 @@ function App() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Right Sidebar - User Story Summary */}
+        <div className="w-80 bg-gray-800 border-l border-gray-700 overflow-y-auto p-4 flex flex-col gap-4 hidden lg:flex">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-300 mb-2">Story Summary</h3>
+            <p className="text-xs text-gray-500 mb-4">Live narrative of your journey so far</p>
+
+            <div className="p-4 rounded bg-gray-900 border border-gray-700 min-h-[200px]">
+              {isSummarizing ? (
+                <div className="flex items-center justify-center h-full text-gray-500 text-xs animate-pulse">
+                  Updating story...
+                </div>
+              ) : (
+                <div className="text-sm text-gray-300 font-serif leading-relaxed whitespace-pre-wrap">
+                  {storySummary}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

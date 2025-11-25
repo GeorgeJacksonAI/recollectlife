@@ -247,8 +247,9 @@ class handler(BaseHTTPRequestHandler):
             route = reconstruct_route_state(route_class, messages, age_range)
 
             # If age selection input provided, validate and advance phase
-            if age_selection_input and provided_phase == "AGE_SELECTION":
+            if age_selection_input:
                 # Set route phase to AGE_SELECTION so should_advance works correctly
+                # We trust the input presence over the provided phase
                 route.phase = "AGE_SELECTION"
                 # Validate age selection without it being in message history
                 if route.should_advance(age_selection_input, explicit_transition=False):
@@ -269,6 +270,17 @@ class handler(BaseHTTPRequestHandler):
                             else None
                         ),
                     }
+
+                    # Add phase order info if available
+                    if hasattr(route, "phase_order"):
+                        response_data["phase_order"] = route.phase_order
+                        try:
+                            response_data["phase_index"] = route.phase_order.index(
+                                current_phase
+                            )
+                        except ValueError:
+                            response_data["phase_index"] = -1
+
                     self._send_json_response(200, response_data)
                     return
 
@@ -349,6 +361,16 @@ class handler(BaseHTTPRequestHandler):
             # Include age_range in response if route has it
             if hasattr(route, "get_age_range") and route.get_age_range():
                 response_data["age_range"] = route.get_age_range()
+
+            # Add phase order info if available
+            if hasattr(route, "phase_order"):
+                response_data["phase_order"] = route.phase_order
+                try:
+                    response_data["phase_index"] = route.phase_order.index(
+                        current_phase
+                    )
+                except ValueError:
+                    response_data["phase_index"] = -1
 
             # Return success response
             self._send_json_response(200, response_data)
