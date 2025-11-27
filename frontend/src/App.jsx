@@ -54,7 +54,7 @@ function App() {
   const [phaseIndex, setPhaseIndex] = useState(-1)
 
   // Define interview phases that allow multi-question conversations
-  const INTERVIEW_PHASES = ['CHILDHOOD', 'ADOLESCENCE', 'EARLY_ADULTHOOD', 'MIDLIFE', 'PRESENT']
+  const INTERVIEW_PHASES = ['BEFORE_BORN', 'CHILDHOOD', 'ADOLESCENCE', 'EARLY_ADULTHOOD', 'MIDLIFE', 'PRESENT']
 
   // Check if current phase is an interview phase (shows "Next Phase" button)
   const isInterviewPhase = INTERVIEW_PHASES.includes(currentPhase)

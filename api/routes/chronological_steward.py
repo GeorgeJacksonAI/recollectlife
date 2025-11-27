@@ -25,6 +25,7 @@ class ChronologicalSteward(StoryRoute):
         "under_18": [
             "GREETING",
             "AGE_SELECTION",
+            "BEFORE_BORN",
             "CHILDHOOD",
             "ADOLESCENCE",
             "PRESENT",
@@ -33,6 +34,7 @@ class ChronologicalSteward(StoryRoute):
         "18_30": [
             "GREETING",
             "AGE_SELECTION",
+            "BEFORE_BORN",
             "CHILDHOOD",
             "ADOLESCENCE",
             "EARLY_ADULTHOOD",
@@ -42,6 +44,7 @@ class ChronologicalSteward(StoryRoute):
         "31_45": [
             "GREETING",
             "AGE_SELECTION",
+            "BEFORE_BORN",
             "CHILDHOOD",
             "ADOLESCENCE",
             "EARLY_ADULTHOOD",
@@ -52,6 +55,7 @@ class ChronologicalSteward(StoryRoute):
         "46_60": [
             "GREETING",
             "AGE_SELECTION",
+            "BEFORE_BORN",
             "CHILDHOOD",
             "ADOLESCENCE",
             "EARLY_ADULTHOOD",
@@ -62,6 +66,7 @@ class ChronologicalSteward(StoryRoute):
         "61_plus": [
             "GREETING",
             "AGE_SELECTION",
+            "BEFORE_BORN",
             "CHILDHOOD",
             "ADOLESCENCE",
             "EARLY_ADULTHOOD",
@@ -105,14 +110,47 @@ Ask: "Please select your age range by typing the number (1-5)."
 
 Keep response SHORT and clear. DO NOT start the interview yet.""",
         },
+        "BEFORE_BORN": {
+            "description": "Family origins, parents, grandparents, and ancestors",
+            "system_instruction": """You are conducting a chronological life story interview. Phase: BEFORE_BORN
+
+Your goal: Explore the family history, origins, and the people who came before - parents, grandparents, ancestors, and those who raised the user.
+
+IMPORTANT: Detect phase transitions by looking for "[Moving to next phase: BEFORE_BORN]" in the last user message.
+If you see this marker:
+- Acknowledge completion: "Thank you for sharing your age. Now let's start at the very beginning - even before you were born."
+- Introduce new phase: "Let's explore **BEFORE YOU WERE BORN** - your family origins."
+- Then ask your opening question
+
+If this is their FIRST response in this phase (no transition marker):
+- Ask about their family background and the people who raised them
+- Examples: "Tell me about your parents - where did they come from and what were they like?" or "What do you know about your grandparents or the generations before you?" or "Who were the key figures in your family before you came along?"
+
+If they've already shared family history:
+- Ask follow-up questions to explore deeper
+- Explore family stories, traditions, immigration journeys, cultural heritage
+- Examples: "What family stories were passed down to you?" or "How did your parents meet?" or "What values or traditions came from your grandparents?" or "Tell me more about [specific family member they mentioned]."
+
+Topics to explore:
+- Parents' backgrounds, how they met, their personalities
+- Grandparents and earlier generations (if known)
+- Family immigration stories or cultural heritage
+- Family traditions, values, and beliefs passed down
+- The circumstances surrounding the user's birth
+- Key figures who shaped the family before the user arrived
+
+Keep it conversational (1-2 sentences). Be genuinely curious about their roots. The user will click "Next Phase" when ready to move to childhood memories.""",
+        },
         "CHILDHOOD": {
             "description": "Earliest memories and foundational years",
             "system_instruction": """You are conducting a chronological life story interview. Phase: CHILDHOOD
 
 Your goal: Deeply explore their earliest significant memories and foundational years (birth to age 12).
 
-IMPORTANT: If this is the VERY FIRST message in this phase (user just transitioned from AGE_SELECTION):
-- Start with: "**CHILDHOOD** (Birth to Age 12)"
+IMPORTANT: Detect phase transitions by looking for "[Moving to next phase: CHILDHOOD]" in the last user message.
+If you see this marker:
+- Acknowledge completion: "Thank you for sharing about your family history."
+- Introduce new phase: "Now let's explore **YOUR CHILDHOOD** (Birth to Age 12)."
 - Then ask your opening question
 
 If this is their FIRST response in this phase:
@@ -349,6 +387,7 @@ Rules:
         # Interview phases: ONLY advance on explicit user request (button click)
         # This allows multiple questions within each phase
         interview_phases = [
+            "BEFORE_BORN",
             "CHILDHOOD",
             "ADOLESCENCE",
             "EARLY_ADULTHOOD",
