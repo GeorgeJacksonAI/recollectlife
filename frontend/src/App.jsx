@@ -44,6 +44,7 @@ function App() {
 
   // Tag selection state
   const [selectedTags, setSelectedTags] = useState([])
+  const [customThemeInput, setCustomThemeInput] = useState('')
 
   // Estado para o resumo da história
   const [storySummary, setStorySummary] = useState("No story details shared yet.")
@@ -54,7 +55,7 @@ function App() {
   const [phaseIndex, setPhaseIndex] = useState(-1)
 
   // Define interview phases that allow multi-question conversations
-  const INTERVIEW_PHASES = ['BEFORE_BORN', 'CHILDHOOD', 'ADOLESCENCE', 'EARLY_ADULTHOOD', 'MIDLIFE', 'PRESENT']
+  const INTERVIEW_PHASES = ['FAMILY_HISTORY', 'CHILDHOOD', 'ADOLESCENCE', 'EARLY_ADULTHOOD', 'MIDLIFE', 'PRESENT']
 
   // Check if current phase is an interview phase (shows "Next Phase" button)
   const isInterviewPhase = INTERVIEW_PHASES.includes(currentPhase)
@@ -66,6 +67,22 @@ function App() {
         ? prev.filter(t => t !== tag)  // Remove if already selected
         : [...prev, tag]                // Add if not selected
     )
+  }
+
+  // Handle adding a custom theme
+  const handleAddCustomTheme = (e) => {
+    e.preventDefault()
+    const trimmed = customThemeInput.trim().toLowerCase().replace(/[^a-z0-9_\s]/g, '').replace(/\s+/g, '_')
+    if (trimmed && !selectedTags.includes(trimmed) && !AVAILABLE_TAGS.includes(trimmed)) {
+      setSelectedTags(prev => [...prev, trimmed])
+      setCustomThemeInput('')
+    } else if (AVAILABLE_TAGS.includes(trimmed) && !selectedTags.includes(trimmed)) {
+      // If it matches an available tag, just select it
+      setSelectedTags(prev => [...prev, trimmed])
+      setCustomThemeInput('')
+    } else {
+      setCustomThemeInput('')  // Clear if duplicate or empty
+    }
   }
 
   // Handle age range selection
@@ -250,7 +267,7 @@ function App() {
           body: JSON.stringify({
             messages: messagesWithMarker,  // Messages WITH transition marker
             route: selectedRoute,
-            phase: newPhase,  // Use new phase (BEFORE_BORN)
+            phase: newPhase,  // Use new phase (FAMILY_HISTORY)
             age_range: newAgeRange,  // Use newly selected age range
             selected_tags: selectedTags
           }),
@@ -510,6 +527,28 @@ function App() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Add Custom Theme Section */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-300 mb-2">Add Your Own Theme</h3>
+            <form onSubmit={handleAddCustomTheme} className="flex gap-2">
+              <input
+                type="text"
+                value={customThemeInput}
+                onChange={(e) => setCustomThemeInput(e.target.value)}
+                placeholder="e.g. spirituality"
+                maxLength={30}
+                className="flex-1 px-2 py-1 bg-gray-900 border border-gray-600 rounded text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              />
+              <button
+                type="submit"
+                className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors"
+              >
+                +
+              </button>
+            </form>
+            <p className="text-xs text-gray-500 mt-1">Custom themes guide the AI conversation</p>
           </div>
         </div>
 

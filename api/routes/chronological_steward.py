@@ -25,7 +25,7 @@ class ChronologicalSteward(StoryRoute):
         "under_18": [
             "GREETING",
             "AGE_SELECTION",
-            "BEFORE_BORN",
+            "FAMILY_HISTORY",
             "CHILDHOOD",
             "ADOLESCENCE",
             "PRESENT",
@@ -34,7 +34,7 @@ class ChronologicalSteward(StoryRoute):
         "18_30": [
             "GREETING",
             "AGE_SELECTION",
-            "BEFORE_BORN",
+            "FAMILY_HISTORY",
             "CHILDHOOD",
             "ADOLESCENCE",
             "EARLY_ADULTHOOD",
@@ -44,7 +44,7 @@ class ChronologicalSteward(StoryRoute):
         "31_45": [
             "GREETING",
             "AGE_SELECTION",
-            "BEFORE_BORN",
+            "FAMILY_HISTORY",
             "CHILDHOOD",
             "ADOLESCENCE",
             "EARLY_ADULTHOOD",
@@ -55,7 +55,7 @@ class ChronologicalSteward(StoryRoute):
         "46_60": [
             "GREETING",
             "AGE_SELECTION",
-            "BEFORE_BORN",
+            "FAMILY_HISTORY",
             "CHILDHOOD",
             "ADOLESCENCE",
             "EARLY_ADULTHOOD",
@@ -66,7 +66,7 @@ class ChronologicalSteward(StoryRoute):
         "61_plus": [
             "GREETING",
             "AGE_SELECTION",
-            "BEFORE_BORN",
+            "FAMILY_HISTORY",
             "CHILDHOOD",
             "ADOLESCENCE",
             "EARLY_ADULTHOOD",
@@ -110,20 +110,20 @@ Ask: "Please select your age range by typing the number (1-5)."
 
 Keep response SHORT and clear. DO NOT start the interview yet.""",
         },
-        "BEFORE_BORN": {
+        "FAMILY_HISTORY": {
             "description": "Family origins, parents, grandparents, and ancestors",
-            "system_instruction": """You are conducting a chronological life story interview. Phase: BEFORE_BORN
+            "system_instruction": """You are conducting a chronological life story interview. Phase: FAMILY_HISTORY
 
 Your goal: Explore the family history, origins, and the people who came before - parents, grandparents, ancestors, and those who raised the user.
 
 IMPORTANT: Detect phase transitions by looking for markers in the last user message:
 - "[Age selected via button:" indicates user just selected their age via button click
-- "[Moving to next phase: BEFORE_BORN]" indicates explicit phase transition
+- "[Moving to next phase: FAMILY_HISTORY]" indicates explicit phase transition
 
 If you see ANY of these markers (age selection or phase transition):
 - DO NOT ask for age - it has already been collected
-- Acknowledge the transition: "Perfect! Now let's start at the very beginning - even before you were born."
-- Introduce the phase: "Let's explore **BEFORE YOU WERE BORN** - your family origins."
+- Acknowledge the transition: "Perfect! Let's start by exploring your family roots."
+- Introduce the phase: "Let's explore your **FAMILY HISTORY** - the people and stories that shaped the world you were born into."
 - Then ask your opening question about family/parents/ancestors
 
 If this is their FIRST response in this phase (no markers present):
@@ -391,7 +391,7 @@ Rules:
         # Interview phases: ONLY advance on explicit user request (button click)
         # This allows multiple questions within each phase
         interview_phases = [
-            "BEFORE_BORN",
+            "FAMILY_HISTORY",
             "CHILDHOOD",
             "ADOLESCENCE",
             "EARLY_ADULTHOOD",

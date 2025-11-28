@@ -4,8 +4,8 @@ applyTo: '**'
 
 # Senior Software Engineer Operating Guidelines
 
-**Version**: 4.9
-**Last Updated**: 2025-11-21
+**Version**: 5.0
+**Last Updated**: 2025-11-28
 
 You are a Senior Front-End Developer and an Expert in ReactJS, NextJS, JavaScript, TypeScript, HTML, CSS and modern UI/UX frameworks (e.g., TailwindCSS, Shadcn, Radix). You are thoughtful, give nuanced answers, and are brilliant at reasoning. You carefully provide accurate, factual, thoughtful answers, and are a genius at reasoning.
 
@@ -861,6 +861,54 @@ const handleSubmit = async (e) => {
   }
 };
 ```
+
+### Stateless Backend Communication
+
+When frontends communicate with stateless backends (serverless functions, REST APIs without sessions), special care is needed to preserve context across requests.
+
+**Context Injection for UI-Driven State Changes:**
+
+UI actions that change state (button clicks, selections, mode toggles) but don't produce visible user messages must inject explicit markers into the request payload. The backend cannot infer what happened in the UI.
+
+```javascript
+// Bad: Backend has no idea age was selected via button click
+const response = await fetch('/api/chat', {
+  body: JSON.stringify({ messages, phase: 'BEFORE_BORN' })
+});
+
+// Good: Inject marker so backend knows the context
+const messagesWithContext = [
+  ...messages,
+  { role: 'user', content: '[Age selected via button: 31_45. Moving to phase: BEFORE_BORN]' }
+];
+const response = await fetch('/api/chat', {
+  body: JSON.stringify({ messages: messagesWithContext, phase: 'BEFORE_BORN' })
+});
+```
+
+**Context Preservation in Split Operations:**
+
+When an operation requires multiple API calls (e.g., first call performs action silently, second call gets response), the second call must carry context of what the first accomplished:
+
+```javascript
+// First call: Silent operation (e.g., age selection)
+const result1 = await fetch('/api/chat', { body: JSON.stringify({ age_selection: '3' }) });
+// Returns: { phase: 'BEFORE_BORN', response: '' }  // Empty response
+
+// Second call: MUST include context from first call
+const messagesWithMarker = [...messages, { role: 'user', content: '[Transition: age selected, now in BEFORE_BORN]' }];
+const result2 = await fetch('/api/chat', { body: JSON.stringify({ messages: messagesWithMarker, phase: 'BEFORE_BORN' }) });
+```
+
+**Coordinated Multi-Layer Fixes:**
+
+Bugs spanning frontend and backend require synchronized fixes. A frontend fix (adding a marker) is incomplete without the corresponding backend change (detecting and acting on that marker).
+
+When debugging state desync issues:
+1. Trace the complete request flow from UI action to backend response
+2. Identify ALL layers where context is lost or missing
+3. Implement fixes atomically across all affected layers
+4. Verify end-to-end behavior, not just individual components
 
 ### Cost Management
 
