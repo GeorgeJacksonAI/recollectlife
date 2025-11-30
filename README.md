@@ -2,7 +2,7 @@
 
 An AI-powered interviewer that transforms personal life stories into meaningful board game narratives. Built with React, Vite, Tailwind CSS (frontend) and Python serverless functions + Google Gemini (backend).
 
-The AI conducts a compassionate 6-question interview across 7 storytelling routes to extract core motivations, turning points, and emotional themes, then synthesizes a structured narrative with title, chapters, and key moments.
+The AI conducts a compassionate chronological interview adapted to the user's age, exploring life phases from family history through childhood, adolescence, adulthood, and present day, then synthesizes a structured narrative with title, chapters, and key moments.
 
 ## 🚀 Tech Stack
 
@@ -10,17 +10,18 @@ The AI conducts a compassionate 6-question interview across 7 storytelling route
 - **Backend**: Python 3.9+ serverless functions (Vercel)
 - **AI Model**: Google Gemini (fallback cascade: 2.5-flash → 2.0-flash → lite variants)
 - **Architecture**: Stateless REST API, client-managed conversation state
-- **Testing**: Pytest (backend), Vitest + React Testing Library (frontend)
+- **Testing**: Pytest (19 tests), Vitest + React Testing Library (8 tests)
 - **Deployment**: Vercel (automatic from git push)
 
 ## 📋 Features
 
-- 🎭 **7 Storytelling Routes**: Chronological, Thematic, Anecdotal, Interview, Reflective, Legacy, Custom
-- 📖 **6-Phase Interview**: GREETING → ROUTE_SELECTION → 5 QUESTIONS → SYNTHESIS
+- 🎭 **Age-Aware Interview**: Phases adapt based on user's age range (under 18, 18-30, 31-45, 46-65, 65+)
+- 📖 **Chronological Journey**: GREETING → AGE_SELECTION → FAMILY_HISTORY → CHILDHOOD → ADOLESCENCE → EARLY_ADULTHOOD → MIDLIFE → PRESENT → SYNTHESIS
+- 🏷️ **Theme Tracking**: Select story themes (family, career, love, etc.) and track which have been addressed
 - ✨ **AI Fallback Cascade**: Automatic retry across 6 Gemini models on rate limits
 - 🔒 **Stateless Architecture**: No server-side sessions, scales horizontally
 - 💬 **Context-Aware**: Client sends full conversation history each request
-- 🎨 **Modern UI**: Dark mode chat interface with phase indicators
+- 🎨 **Modern UI**: Dark mode chat interface with phase timeline and theme tags
 - ⚡ **Fast**: Serverless functions with 30s timeout, optimized fallback
 - 🛡️ **Production-Ready**: Input validation, error handling, comprehensive tests
 
@@ -28,26 +29,30 @@ The AI conducts a compassionate 6-question interview across 7 storytelling route
 
 ```
 /
-├── api/                      # Vercel serverless functions (Python)
-│   ├── chat.py              # POST /api/chat - main AI endpoint
-│   ├── model_status.py      # GET /api/model-status - model info
-│   ├── health.py            # GET /api/health - health check
-│   └── ai_fallback.py       # Pure fallback logic (tested)
-├── frontend/                 # React + Vite frontend
+├── api/                          # Vercel serverless functions (Python)
+│   ├── chat.py                   # POST /api/chat - main AI endpoint
+│   ├── ai_fallback.py            # Gemini fallback cascade logic
+│   ├── health.py                 # GET /api/health - health check
+│   ├── model_status.py           # GET /api/model-status - model info
+│   ├── summary.py                # GET /api/summary - story summary
+│   └── routes/                   # Modular interview routes
+│       ├── base.py               # StoryRoute abstract base class
+│       └── chronological_steward.py  # Age-aware chronological route
+├── frontend/                     # React + Vite frontend
 │   ├── src/
-│   │   ├── App.jsx          # Main chat UI (stateless)
-│   │   ├── __tests__/       # Vitest component tests
-│   │   └── test/setup.js    # Test configuration
-│   ├── vite.config.js       # Build config (no proxy needed)
-│   └── package.json         # Frontend dependencies + test scripts
-├── src/                      # Shared Python logic
-│   ├── conversation.py      # ConversationState, phase definitions
-│   └── ...
+│   │   ├── App.jsx               # Main chat UI (stateless)
+│   │   ├── App.css               # Tailwind styles
+│   │   └── __tests__/            # Vitest component tests
+│   ├── vite.config.js            # Build config
+│   └── package.json              # Frontend dependencies
 ├── tests/
-│   └── python/              # Backend unit tests (37 passing)
-├── vercel.json              # Vercel deployment config
-├── requirements.txt         # Python deps for Vercel runtime
-└── .env.example             # Environment variable template
+│   └── python/                   # Backend unit tests (19 tests)
+│       ├── test_ai_fallback.py   # AI fallback logic tests
+│       └── test_age_aware.py     # Age-aware phase tests
+├── dev_server.py                 # Local development server
+├── vercel.json                   # Vercel deployment config
+├── requirements.txt              # Python deps for Vercel runtime
+└── .env.example                  # Environment variable template
 ```
 
 ## Prerequisites
@@ -78,22 +83,22 @@ GEMINI_API_KEY="your_google_gemini_api_key_here"
 cd frontend && npm install
 ```
 
-**Backend (tests):**
+**Backend (for tests):**
 ```bash
 conda create -y -n chatbot python=3.10
 conda activate chatbot
-pip install -r backend/requirements.txt
+pip install -r requirements.txt
 ```
 
 ## 🧪 Testing
 
-**Backend:** ✅ 37/37 passing
+**Backend:** ✅ 19 tests
 ```bash
 conda activate chatbot
 pytest tests/python/ -v
 ```
 
-**Frontend:**
+**Frontend:** ✅ 8 tests
 ```bash
 cd frontend && npm test
 ```
@@ -106,24 +111,42 @@ vercel dev
 # Frontend + API at http://localhost:3000
 ```
 
-**Separate Servers (Legacy):**
+**Dev Server (Alternative):**
 ```bash
-# Terminal 1
-cd frontend && npm run dev
-
-# Terminal 2 (deprecated Flask)
-conda activate chatbot
-python backend/api.py
+python dev_server.py
+# API at http://localhost:5328
 ```
 
 ## 📡 API Endpoints
 
 ### `POST /api/chat`
+
+Main chat endpoint for AI conversation.
+
+**Request:**
 ```json
 {
   "messages": [{"role": "user", "content": "Hello"}],
+  "route": "1",
   "phase": "GREETING",
-  "selected_route": "1"
+  "age_range": "31_45",
+  "advance_phase": false,
+  "selected_tags": ["family", "career", "adventure"],
+  "addressed_themes": ["family"]
+}
+```
+
+**Response:**
+```json
+{
+  "response": "AI generated response...",
+  "model": "gemini-2.5-flash",
+  "attempts": 1,
+  "phase": "GREETING",
+  "phase_order": ["GREETING", "AGE_SELECTION", "FAMILY_HISTORY", "..."],
+  "phase_index": 0,
+  "age_range": "31_45",
+  "newly_addressed_themes": ["career"]
 }
 ```
 
@@ -132,6 +155,9 @@ Returns fallback cascade info.
 
 ### `GET /api/health`
 Health check.
+
+### `GET /api/summary`
+Generate story summary from conversation.
 
 ## 🚢 Vercel Deployment
 
@@ -159,6 +185,7 @@ Auto-deploys on git push to `main`.
 
 - ✅ API keys server-side only (Vercel env)
 - ✅ Input validation (50K char limit)
+- ✅ Theme injection protection (sanitized user input)
 - ✅ Never commit `.env`
 - ✅ CORS headers in serverless functions
 
@@ -184,13 +211,15 @@ Auto-deploys on git push to `main`.
 GEMINI_MODELS=gemini-2.5-flash,gemini-1.5-pro
 ```
 
-**Edit Questions:** Modify `src/conversation.py` `INTERVIEW_PHASES`
+**Add New Interview Routes:** Create a new class in `api/routes/` extending `StoryRoute` base class
+
+**Modify Phases:** Edit `AGE_PHASE_MAPPING` in `api/routes/chronological_steward.py`
 
 **Adjust Timeout:** Edit `vercel.json` `maxDuration`
 
 ## 🤝 Contributing
 
-Focus areas: frontend tests, interview optimization, UI/UX, performance
+Focus areas: new interview routes, UI/UX improvements, additional theme keywords, test coverage
 
 ## 📝 License
 
@@ -205,4 +234,3 @@ MIT License
 ---
 
 **Built with ❤️ for preserving life stories through AI**
-
