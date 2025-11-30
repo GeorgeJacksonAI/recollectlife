@@ -27,6 +27,92 @@ ROUTE_REGISTRY = {
     "chronological": ChronologicalSteward,
 }
 
+# Theme keyword mappings for detecting addressed themes in AI responses
+# Each theme maps to a list of keywords that indicate the theme was discussed
+THEME_KEYWORDS: Dict[str, list] = {
+    "family": [
+        "family",
+        "families",
+        "parents",
+        "siblings",
+        "relatives",
+        "mother",
+        "father",
+        "brother",
+        "sister",
+    ],
+    "career": [
+        "career",
+        "job",
+        "work",
+        "profession",
+        "occupation",
+        "employment",
+        "workplace",
+    ],
+    "love": [
+        "love",
+        "romance",
+        "relationship",
+        "partner",
+        "spouse",
+        "dating",
+        "marriage",
+    ],
+    "adventure": [
+        "adventure",
+        "adventures",
+        "exciting",
+        "explore",
+        "exploration",
+        "journey",
+    ],
+    "challenge": [
+        "challenge",
+        "challenges",
+        "difficult",
+        "struggle",
+        "overcome",
+        "obstacle",
+    ],
+    "growth": ["growth", "growing", "develop", "progress", "evolve", "mature", "learn"],
+    "travel": [
+        "travel",
+        "traveled",
+        "trip",
+        "trips",
+        "journey",
+        "visited",
+        "destination",
+    ],
+    "friendship": ["friendship", "friends", "friend", "companion", "buddy", "pal"],
+    "legacy": [
+        "legacy",
+        "heritage",
+        "inheritance",
+        "lasting",
+        "remember",
+        "leave behind",
+    ],
+    "identity": ["identity", "who you are", "sense of self", "define", "authentic"],
+    "father_figure": ["father", "dad", "daddy", "paternal", "fatherly"],
+    "mother_figure": ["mother", "mom", "mommy", "maternal", "motherly"],
+    "mentor": ["mentor", "mentors", "guide", "teacher", "coach", "advisor"],
+    "loss": ["loss", "lost", "grief", "grieving", "mourning", "passed away", "death"],
+    "success": [
+        "success",
+        "successful",
+        "achievement",
+        "accomplish",
+        "triumph",
+        "victory",
+    ],
+    "failure": ["failure", "failed", "setback", "mistake", "defeat"],
+    "humor": ["humor", "humour", "funny", "laugh", "comedy", "joke"],
+    "courage": ["courage", "courageous", "brave", "bravery", "fearless"],
+    "resilience": ["resilience", "resilient", "bounce back", "recover", "persevere"],
+}
+
 
 def validate_payload(data: Dict) -> tuple[bool, str, Dict]:
     """
@@ -169,126 +255,16 @@ def detect_addressed_themes(
     text_lower = text.lower()
     newly_addressed = []
 
-    # Theme keyword mappings for better detection
-    theme_keywords = {
-        "family": [
-            "family",
-            "families",
-            "parents",
-            "siblings",
-            "relatives",
-            "mother",
-            "father",
-            "brother",
-            "sister",
-        ],
-        "career": [
-            "career",
-            "job",
-            "work",
-            "profession",
-            "occupation",
-            "employment",
-            "workplace",
-        ],
-        "love": [
-            "love",
-            "romance",
-            "relationship",
-            "partner",
-            "spouse",
-            "dating",
-            "marriage",
-        ],
-        "adventure": [
-            "adventure",
-            "adventures",
-            "exciting",
-            "explore",
-            "exploration",
-            "journey",
-        ],
-        "challenge": [
-            "challenge",
-            "challenges",
-            "difficult",
-            "struggle",
-            "overcome",
-            "obstacle",
-        ],
-        "growth": [
-            "growth",
-            "growing",
-            "develop",
-            "progress",
-            "evolve",
-            "mature",
-            "learn",
-        ],
-        "travel": [
-            "travel",
-            "traveled",
-            "trip",
-            "trips",
-            "journey",
-            "visited",
-            "destination",
-        ],
-        "friendship": ["friendship", "friends", "friend", "companion", "buddy", "pal"],
-        "legacy": [
-            "legacy",
-            "heritage",
-            "inheritance",
-            "lasting",
-            "remember",
-            "leave behind",
-        ],
-        "identity": ["identity", "who you are", "sense of self", "define", "authentic"],
-        "father_figure": ["father", "dad", "daddy", "paternal", "fatherly"],
-        "mother_figure": ["mother", "mom", "mommy", "maternal", "motherly"],
-        "mentor": ["mentor", "mentors", "guide", "teacher", "coach", "advisor"],
-        "loss": [
-            "loss",
-            "lost",
-            "grief",
-            "grieving",
-            "mourning",
-            "passed away",
-            "death",
-        ],
-        "success": [
-            "success",
-            "successful",
-            "achievement",
-            "accomplish",
-            "triumph",
-            "victory",
-        ],
-        "failure": ["failure", "failed", "setback", "mistake", "defeat"],
-        "humor": ["humor", "humour", "funny", "laugh", "comedy", "joke"],
-        "courage": ["courage", "courageous", "brave", "bravery", "fearless"],
-        "resilience": [
-            "resilience",
-            "resilient",
-            "bounce back",
-            "recover",
-            "persevere",
-        ],
-    }
-
     for theme in selected_tags:
-        # Skip if already addressed
         if theme in already_addressed:
             continue
 
-        # Get keywords for this theme, or use the theme itself
-        keywords = theme_keywords.get(theme.lower(), [theme.lower()])
+        # Get keywords for this theme, or use the theme itself as fallback
+        keywords = THEME_KEYWORDS.get(theme.lower(), [theme.lower()])
 
         # Check if any keyword appears in the text
-        for keyword in keywords:
-            if keyword in text_lower:
-                newly_addressed.append(theme)
-                break
+        if any(keyword in text_lower for keyword in keywords):
+            newly_addressed.append(theme)
 
     return newly_addressed
 
@@ -374,239 +350,265 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         """Handle POST requests for chat."""
         try:
-            # Read request body
-            content_length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_length).decode("utf-8")
+            payload = self._parse_request_body()
+            if payload is None:
+                return  # Error response already sent
 
-            # Parse JSON
-            data = json.loads(body) if body else {}
-
-            # Validate payload
-            is_valid, error_msg, validated = validate_payload(data)
+            is_valid, error_msg, validated = validate_payload(payload)
             if not is_valid:
-                self._send_json_response(400, {"error": error_msg})
-                return
+                return self._send_error(400, error_msg)
 
-            # Extract validated data
-            messages = validated["messages"]
-            route_id = validated["route_id"]
-            provided_phase = validated["phase"]
-            age_range = validated["age_range"]
-            advance_phase = validated["advance_phase"]
-            age_selection_input = validated.get("age_selection_input")
-            jump_to_phase = validated.get("jump_to_phase")
-            selected_tags = validated.get("selected_tags", [])
-            addressed_themes = validated.get("addressed_themes", [])
+            route, messages, context = self._initialize_route_context(validated)
 
-            # Instantiate route and reconstruct state
-            route_class = ROUTE_REGISTRY[route_id]
-            route = reconstruct_route_state(route_class, messages, age_range)
-
-            # If age selection input provided, validate and advance phase
-            if age_selection_input:
-                # Set route phase to AGE_SELECTION so should_advance works correctly
-                # We trust the input presence over the provided phase
-                route.phase = "AGE_SELECTION"
-                # Validate age selection without it being in message history
-                if route.should_advance(age_selection_input, explicit_transition=False):
-                    current_phase = route.advance_phase()
-                    print(f"[AGE] Selected: {age_selection_input} -> {route.age_range}")
-                    print(f"[PHASE] Advanced to: {current_phase}")
-
-                    # Return immediately without generating AI response
-                    # Age selection is a silent operation - no chat message needed
-                    response_data = {
-                        "response": "",  # Empty response - no AI message
-                        "model": "none",
-                        "attempts": 0,
-                        "phase": current_phase,
-                        "age_range": (
-                            route.get_age_range()
-                            if hasattr(route, "get_age_range")
-                            else None
-                        ),
-                    }
-
-                    # Add phase order info if available
-                    if hasattr(route, "phase_order"):
-                        response_data["phase_order"] = route.phase_order
-                        try:
-                            response_data["phase_index"] = route.phase_order.index(
-                                current_phase
-                            )
-                        except ValueError:
-                            response_data["phase_index"] = -1
-
-                    self._send_json_response(200, response_data)
-                    return
-
-            # Handle phase jump (user clicked on a phase in timeline)
-            if jump_to_phase:
-                # Validate target phase exists in phase order
-                if hasattr(route, "phase_order") and jump_to_phase in route.phase_order:
-                    old_phase = provided_phase or "UNKNOWN"
-                    current_phase = jump_to_phase
-                    route.phase = current_phase
-                    print(f"[PHASE] Jumped from {old_phase} to: {current_phase}")
-
-                    # Add transition marker so AI knows about the jump
-                    messages = messages + [
-                        {
-                            "role": "user",
-                            "content": f"[Jumping to chapter: {current_phase}]",
-                        }
-                    ]
-                else:
-                    self._send_json_response(
-                        400, {"error": f"Invalid phase: {jump_to_phase}"}
-                    )
-                    return
-            else:
-                # Determine current phase normally
-                if provided_phase:
-                    current_phase = provided_phase
-                else:
-                    current_phase = get_current_phase_from_route(route, messages)
-
-            # Handle explicit phase advancement if requested
-            if advance_phase:
-                old_phase = current_phase
-                route.phase = current_phase
-                # Get last user message for validation
-                last_user_msg = next(
-                    (m["content"] for m in reversed(messages) if m["role"] == "user"),
-                    "",
+            # Handle age selection (silent operation - no AI response)
+            if context["age_selection_input"]:
+                response = self._handle_age_selection(
+                    route, context["age_selection_input"]
                 )
-                # Check if should advance (with explicit_transition=True)
-                if route.should_advance(last_user_msg, explicit_transition=True):
-                    current_phase = route.advance_phase()
-                    print(f"[PHASE] Advanced from {old_phase} to: {current_phase}")
+                if response:
+                    return self._send_json_response(200, response)
 
-                    # Add transition marker to messages so AI knows to acknowledge the phase change
-                    # This allows the system instruction's "If user just clicked 'Next Phase'" logic to trigger
-                    messages = messages + [
-                        {
-                            "role": "user",
-                            "content": f"[Moving to next phase: {current_phase}]",
-                        }
-                    ]
-
-            # Get system instruction for current phase
-            try:
-                route.phase = current_phase
-                phase_config = route.get_current_phase()
-                system_instruction = phase_config["system_instruction"]
-            except (ValueError, KeyError) as e:
-                self._send_json_response(
-                    400,
-                    {
-                        "error": f"Invalid phase '{current_phase}' for route '{route_id}': {str(e)}"
-                    },
-                )
-                return
-
-            # Inject selected tags into system instruction if present
-            if selected_tags:
-                # Sanitize tags: remove quotes and limit length to prevent injection
-                sanitized_tags = [
-                    tag.replace('"', "").replace("'", "")[:30] for tag in selected_tags
-                ]
-
-                # Separate pending and addressed themes
-                pending_themes = [
-                    t for t in sanitized_tags if t not in addressed_themes
-                ]
-                addressed_display = [t for t in sanitized_tags if t in addressed_themes]
-
-                # Build context with pending/addressed status
-                pending_quoted = (
-                    ", ".join(f'"{tag}"' for tag in pending_themes)
-                    if pending_themes
-                    else "none"
-                )
-                addressed_quoted = (
-                    ", ".join(f'"{tag}"' for tag in addressed_display)
-                    if addressed_display
-                    else "none"
-                )
-
-                tag_context = f"""
-
-STORY THEMES TO ADDRESS:
-
-Pending themes (prioritize these): {pending_quoted}
-Already addressed themes: {addressed_quoted}
-
-For the pending themes, find natural opportunities to ask about or explore these topics in the conversation. Each theme should be addressed at least once before the story is complete. Weave them naturally into questions when relevant - don't force them."""
-                system_instruction = system_instruction + tag_context
-                print(
-                    f"[TAGS] Pending: {pending_quoted} | Addressed: {addressed_quoted}"
-                )
-
-            # Generate AI response with fallback
-            result = run_gemini_fallback(
-                messages=messages,
-                system_instruction=system_instruction,
+            # Determine current phase with jump/advance handling
+            current_phase, messages = self._resolve_current_phase(
+                route, messages, context
             )
+            if current_phase is None:
+                return  # Error response already sent
 
-            # Check if generation succeeded
+            # Build system instruction with theme context
+            system_instruction = self._build_system_instruction(
+                route, current_phase, context
+            )
+            if system_instruction is None:
+                return  # Error response already sent
+
+            # Generate AI response
+            result = run_gemini_fallback(
+                messages=messages, system_instruction=system_instruction
+            )
             if not result["success"]:
-                self._send_json_response(
+                return self._send_error(
                     500,
-                    {
-                        "error": result["error"] or "Failed to generate AI response",
-                        "attempts": result["attempts"],
-                    },
+                    result["error"] or "Failed to generate AI response",
+                    {"attempts": result["attempts"]},
                 )
-                return
 
-            # Detect newly addressed themes in the AI response
-            newly_addressed = []
-            if selected_tags:
-                newly_addressed = detect_addressed_themes(
-                    result["content"], selected_tags, addressed_themes
-                )
-                if newly_addressed:
-                    print(f"[TAGS] Newly addressed: {newly_addressed}")
-
-            # Prepare response
-            response_data = {
-                "response": result["content"],
-                "model": result["model"],
-                "attempts": result["attempts"],
-                "phase": current_phase,
-                "newly_addressed_themes": newly_addressed,
-            }
-
-            # Include age_range in response if route has it
-            if hasattr(route, "get_age_range") and route.get_age_range():
-                response_data["age_range"] = route.get_age_range()
-
-            # Add phase order info if available
-            if hasattr(route, "phase_order"):
-                response_data["phase_order"] = route.phase_order
-                try:
-                    response_data["phase_index"] = route.phase_order.index(
-                        current_phase
-                    )
-                except ValueError:
-                    response_data["phase_index"] = -1
-
-            # Return success response
-            self._send_json_response(200, response_data)
+            # Build and send response
+            response = self._build_chat_response(route, current_phase, result, context)
+            self._send_json_response(200, response)
 
         except json.JSONDecodeError as e:
-            self._send_json_response(400, {"error": f"Invalid JSON: {str(e)}"})
-
+            self._send_error(400, f"Invalid JSON: {str(e)}")
         except Exception as e:
             print(f"[ERROR] Unhandled exception in chat handler: {e}")
             import traceback
 
             traceback.print_exc()
-            self._send_json_response(500, {"error": f"Internal server error: {str(e)}"})
+            self._send_error(500, f"Internal server error: {str(e)}")
+
+    def _parse_request_body(self) -> Optional[Dict]:
+        """Parse and return JSON request body, or None on error."""
+        content_length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(content_length).decode("utf-8")
+        try:
+            return json.loads(body) if body else {}
+        except json.JSONDecodeError as e:
+            self._send_error(400, f"Invalid JSON: {str(e)}")
+            return None
+
+    def _initialize_route_context(self, validated: Dict) -> tuple:
+        """Initialize route object and extract context from validated payload."""
+        route_class = ROUTE_REGISTRY[validated["route_id"]]
+        route = reconstruct_route_state(
+            route_class, validated["messages"], validated["age_range"]
+        )
+
+        context = {
+            "provided_phase": validated["phase"],
+            "advance_phase": validated["advance_phase"],
+            "age_selection_input": validated.get("age_selection_input"),
+            "jump_to_phase": validated.get("jump_to_phase"),
+            "selected_tags": validated.get("selected_tags", []),
+            "addressed_themes": validated.get("addressed_themes", []),
+            "route_id": validated["route_id"],
+        }
+
+        return route, validated["messages"], context
+
+    def _handle_age_selection(self, route, age_selection_input: str) -> Optional[Dict]:
+        """Handle age selection input, return response dict or None."""
+        route.phase = "AGE_SELECTION"
+
+        if not route.should_advance(age_selection_input, explicit_transition=False):
+            return None
+
+        current_phase = route.advance_phase()
+        print(f"[AGE] Selected: {age_selection_input} -> {route.age_range}")
+        print(f"[PHASE] Advanced to: {current_phase}")
+
+        return self._build_response_data(
+            route=route,
+            current_phase=current_phase,
+            content="",
+            model="none",
+            attempts=0,
+        )
+
+    def _resolve_current_phase(
+        self, route, messages: list, context: Dict
+    ) -> tuple[Optional[str], list]:
+        """Determine current phase, handling jumps and advances. Returns (phase, messages)."""
+        jump_to_phase = context["jump_to_phase"]
+        provided_phase = context["provided_phase"]
+        advance_phase = context["advance_phase"]
+
+        # Handle phase jump
+        if jump_to_phase:
+            if not (
+                hasattr(route, "phase_order") and jump_to_phase in route.phase_order
+            ):
+                self._send_error(400, f"Invalid phase: {jump_to_phase}")
+                return None, messages
+
+            old_phase = provided_phase or "UNKNOWN"
+            route.phase = jump_to_phase
+            print(f"[PHASE] Jumped from {old_phase} to: {jump_to_phase}")
+            messages = messages + [
+                {"role": "user", "content": f"[Jumping to chapter: {jump_to_phase}]"}
+            ]
+            return jump_to_phase, messages
+
+        # Determine phase normally
+        current_phase = provided_phase or get_current_phase_from_route(route, messages)
+
+        # Handle explicit phase advancement
+        if advance_phase:
+            route.phase = current_phase
+            last_user_msg = next(
+                (m["content"] for m in reversed(messages) if m["role"] == "user"), ""
+            )
+            if route.should_advance(last_user_msg, explicit_transition=True):
+                old_phase = current_phase
+                current_phase = route.advance_phase()
+                print(f"[PHASE] Advanced from {old_phase} to: {current_phase}")
+                messages = messages + [
+                    {
+                        "role": "user",
+                        "content": f"[Moving to next phase: {current_phase}]",
+                    }
+                ]
+
+        return current_phase, messages
+
+    def _build_system_instruction(
+        self, route, current_phase: str, context: Dict
+    ) -> Optional[str]:
+        """Build system instruction with optional theme context. Returns None on error."""
+        try:
+            route.phase = current_phase
+            phase_config = route.get_current_phase()
+            system_instruction = phase_config["system_instruction"]
+        except (ValueError, KeyError) as e:
+            self._send_error(
+                400,
+                f"Invalid phase '{current_phase}' for route '{context['route_id']}': {str(e)}",
+            )
+            return None
+
+        # Inject theme context if themes are selected
+        selected_tags = context["selected_tags"]
+        if not selected_tags:
+            return system_instruction
+
+        addressed_themes = context["addressed_themes"]
+        sanitized_tags = [
+            tag.replace('"', "").replace("'", "")[:30] for tag in selected_tags
+        ]
+
+        pending = [t for t in sanitized_tags if t not in addressed_themes]
+        addressed = [t for t in sanitized_tags if t in addressed_themes]
+
+        pending_str = ", ".join(f'"{t}"' for t in pending) if pending else "none"
+        addressed_str = ", ".join(f'"{t}"' for t in addressed) if addressed else "none"
+
+        theme_context = f"""
+
+STORY THEMES TO ADDRESS:
+
+Pending themes (prioritize these): {pending_str}
+Already addressed themes: {addressed_str}
+
+For the pending themes, find natural opportunities to ask about or explore these topics in the conversation. Each theme should be addressed at least once before the story is complete. Weave them naturally into questions when relevant - don't force them."""
+
+        print(f"[TAGS] Pending: {pending_str} | Addressed: {addressed_str}")
+        return system_instruction + theme_context
+
+    def _build_chat_response(
+        self, route, current_phase: str, ai_result: Dict, context: Dict
+    ) -> Dict:
+        """Build the final chat response with theme detection."""
+        selected_tags = context["selected_tags"]
+        addressed_themes = context["addressed_themes"]
+
+        newly_addressed = []
+        if selected_tags:
+            newly_addressed = detect_addressed_themes(
+                ai_result["content"], selected_tags, addressed_themes
+            )
+            if newly_addressed:
+                print(f"[TAGS] Newly addressed: {newly_addressed}")
+
+        response = self._build_response_data(
+            route=route,
+            current_phase=current_phase,
+            content=ai_result["content"],
+            model=ai_result["model"],
+            attempts=ai_result["attempts"],
+            newly_addressed_themes=newly_addressed,
+        )
+        return response
+
+    def _build_response_data(
+        self,
+        route,
+        current_phase: str,
+        content: str,
+        model: str,
+        attempts: int,
+        newly_addressed_themes: Optional[list] = None,
+    ) -> Dict:
+        """Build standardized response data dictionary."""
+        response = {
+            "response": content,
+            "model": model,
+            "attempts": attempts,
+            "phase": current_phase,
+        }
+
+        if newly_addressed_themes is not None:
+            response["newly_addressed_themes"] = newly_addressed_themes
+
+        if hasattr(route, "get_age_range") and route.get_age_range():
+            response["age_range"] = route.get_age_range()
+
+        if hasattr(route, "phase_order"):
+            response["phase_order"] = route.phase_order
+            try:
+                response["phase_index"] = route.phase_order.index(current_phase)
+            except ValueError:
+                response["phase_index"] = -1
+
+        return response
+
+    def _send_error(self, status_code: int, message: str, extra: Optional[Dict] = None):
+        """Send error response with optional extra fields."""
+        data = {"error": message}
+        if extra:
+            data.update(extra)
+        self._send_json_response(status_code, data)
 
     def _send_json_response(self, status_code: int, data: dict):
-        """Helper method to send JSON responses."""
+        """Send JSON response with CORS headers."""
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")
