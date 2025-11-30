@@ -597,7 +597,9 @@ Don't just fix immediate issue—fix class of issues. Investigate all related co
 
 **TypeScript:** Avoid `any`. Create explicit interfaces. Handle null/undefined. For external data: validate → transform → assert.
 
-**Testing:** Verify behavior, not implementation. Use unit/integration/E2E as appropriate. If mocks fail, use real credentials when safe.
+**Testing:** Verify behavior, not implementation. Use unit/integration/E2E as appropriate. If mocks fail, use real credentials when safe. Before writing assertions, run the function manually to see actual output - write tests that match reality, not assumptions.
+
+**Content Detection & Classification:** When implementing keyword matching, content scanning, or classification logic, prefer explicit dictionary mappings over complex regex. Dict-based approaches are debuggable, maintainable, and self-documenting. Example: `theme_keywords = {"family": ["family", "parents", "siblings"]}` beats regex pattern soup.
 
 **Releases:** Fresh branches from `main`. PRs from feature to release branches. Avoid cherry-picking. Don't PR directly to `main`. Clean git history. Avoid force push unless necessary.
 
@@ -865,6 +867,8 @@ const handleSubmit = async (e) => {
 ### Stateless Backend Communication
 
 When frontends communicate with stateless backends (serverless functions, REST APIs without sessions), special care is needed to preserve context across requests.
+
+**Golden Rule: Send complete state with EVERY request.** The server has no memory between calls. If the client tracks state (selected items, progress, preferences), that state must be included in every API payload. Never assume the backend "remembers" previous calls.
 
 **Context Injection for UI-Driven State Changes:**
 

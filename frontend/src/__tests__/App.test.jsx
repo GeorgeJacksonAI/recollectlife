@@ -20,7 +20,8 @@ describe('App Component', () => {
 
         it('should display initial greeting message', () => {
             render(<App />)
-            expect(screen.getByText(/Welcome to the Life Story Game!/i)).toBeTruthy()
+            // Updated to match actual greeting in App.jsx
+            expect(screen.getByText(/Welcome! I'm here to help you tell your life story/i)).toBeTruthy()
         })
 
         it('should show input field and send button', () => {
@@ -39,7 +40,7 @@ describe('App Component', () => {
                     response: 'Great! Let me help you tell your story.',
                     model: 'gemini-2.0-flash',
                     attempts: 1,
-                    phase: 'ROUTE_SELECTION',
+                    phase: 'AGE_SELECTION',
                 }),
             })
 
@@ -94,14 +95,14 @@ describe('App Component', () => {
         })
     })
 
-    describe('Route Selection', () => {
-        it('should advance to route selection after GREETING', async () => {
+    describe('Age Selection Flow', () => {
+        it('should show age selection UI after saying yes to greeting', async () => {
             const user = userEvent.setup()
             global.fetch.mockResolvedValueOnce({
                 ok: true,
                 json: async () => ({
-                    message: 'Here are your storytelling options...',
-                    phase: 'ROUTE_SELECTION',
+                    response: '',
+                    phase: 'AGE_SELECTION',
                 }),
             })
 
@@ -112,8 +113,9 @@ describe('App Component', () => {
             await user.type(input, 'yes')
             await user.click(button)
 
+            // App shows age selection UI after GREETING -> AGE_SELECTION transition
             await waitFor(() => {
-                expect(screen.getByText(/Choose Your Storytelling Approach/i)).toBeTruthy()
+                expect(screen.getByText(/Select Your Age Range/i)).toBeTruthy()
             })
         })
     })
@@ -124,7 +126,7 @@ describe('App Component', () => {
             global.fetch.mockResolvedValueOnce({
                 ok: true,
                 json: async () => ({
-                    message: 'Response',
+                    response: 'Response',
                     phase: 'GREETING',
                 }),
             })

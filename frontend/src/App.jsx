@@ -531,8 +531,8 @@ function App() {
                       key={tag}
                       onClick={() => handleTagToggle(tag)}
                       className={`px-2 py-1 text-xs rounded transition-colors flex items-center gap-1 ${isAddressed
-                          ? 'bg-green-700 hover:bg-green-800 text-white'
-                          : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        ? 'bg-green-700 hover:bg-green-800 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
                         }`}
                       title={isAddressed ? 'Theme addressed in conversation' : 'Theme pending'}
                     >
@@ -624,7 +624,7 @@ function App() {
         {/* Right Sidebar - User Story Summary */}
         <div className="w-80 bg-gray-800 border-l border-gray-700 overflow-y-auto p-4 flex flex-col gap-4 hidden lg:flex">
           <div>
-            <h3 className="text-sm font-semibold text-gray-300 mb-2">Story Summary</h3>
+            <h3 className="text-sm font-semibold text-gray-300 mb-2">Chapter Summary</h3>
             <p className="text-xs text-gray-500 mb-4">Live narrative of your journey so far</p>
 
             <div className="p-4 rounded bg-gray-900 border border-gray-700 min-h-[200px]">

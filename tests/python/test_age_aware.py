@@ -17,7 +17,7 @@ def test_age_aware_phases():
     print("Testing Age-Aware Phase Progression")
     print("=" * 60)
 
-    # Test each age range
+    # Test each age range - expected phases must match ChronologicalSteward.AGE_PHASE_MAPPING
     age_ranges = [
         (
             "1",
@@ -25,6 +25,7 @@ def test_age_aware_phases():
             [
                 "GREETING",
                 "AGE_SELECTION",
+                "FAMILY_HISTORY",
                 "CHILDHOOD",
                 "ADOLESCENCE",
                 "PRESENT",
@@ -37,6 +38,7 @@ def test_age_aware_phases():
             [
                 "GREETING",
                 "AGE_SELECTION",
+                "FAMILY_HISTORY",
                 "CHILDHOOD",
                 "ADOLESCENCE",
                 "EARLY_ADULTHOOD",
@@ -50,6 +52,7 @@ def test_age_aware_phases():
             [
                 "GREETING",
                 "AGE_SELECTION",
+                "FAMILY_HISTORY",
                 "CHILDHOOD",
                 "ADOLESCENCE",
                 "EARLY_ADULTHOOD",
@@ -64,6 +67,7 @@ def test_age_aware_phases():
             [
                 "GREETING",
                 "AGE_SELECTION",
+                "FAMILY_HISTORY",
                 "CHILDHOOD",
                 "ADOLESCENCE",
                 "EARLY_ADULTHOOD",
@@ -78,6 +82,7 @@ def test_age_aware_phases():
             [
                 "GREETING",
                 "AGE_SELECTION",
+                "FAMILY_HISTORY",
                 "CHILDHOOD",
                 "ADOLESCENCE",
                 "EARLY_ADULTHOOD",
