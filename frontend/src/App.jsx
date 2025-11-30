@@ -694,15 +694,15 @@ function App() {
               className="w-full flex items-center justify-between px-3 py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg transition-colors text-sm"
             >
               <span className="text-gray-300">
-                {selectedChapters.length === 0 
-                  ? 'Select chapters...' 
+                {selectedChapters.length === 0
+                  ? 'Select chapters...'
                   : `${selectedChapters.length} chapter${selectedChapters.length !== 1 ? 's' : ''} selected`
                 }
               </span>
-              <svg 
+              <svg
                 className={`w-4 h-4 text-gray-400 transition-transform ${isChapterDropdownOpen ? 'rotate-180' : ''}`}
-                fill="none" 
-                stroke="currentColor" 
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

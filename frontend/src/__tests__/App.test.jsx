@@ -165,7 +165,7 @@ describe('App Component', () => {
             it('should show all available interview phases as selectable options', async () => {
                 const user = userEvent.setup()
                 render(<App />)
-                
+
                 // Open dropdown first
                 await openChapterDropdown(user)
 
@@ -393,20 +393,20 @@ describe('App Component', () => {
             it('should have a Select All button', async () => {
                 const user = userEvent.setup()
                 render(<App />)
-                
+
                 // Open dropdown first
                 await openChapterDropdown(user)
-                
+
                 expect(screen.getByTestId('select-all-chapters-btn')).toBeTruthy()
             })
 
             it('should have a Clear All button', async () => {
                 const user = userEvent.setup()
                 render(<App />)
-                
+
                 // Open dropdown first
                 await openChapterDropdown(user)
-                
+
                 expect(screen.getByTestId('clear-all-chapters-btn')).toBeTruthy()
             })
 
