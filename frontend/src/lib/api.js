@@ -137,6 +137,20 @@ export const apiService = {
             return Promise.resolve();
         },
     },
+
+    /**
+     * Chat API - AI Conversation
+     */
+    chat: {
+        send: (payload) => api.post('/api/chat', payload),
+    },
+
+    /**
+     * Summary API - Story Summarization
+     */
+    summary: {
+        generate: (payload) => api.post('/api/summary', payload),
+    },
 };
 
 export default apiService;
