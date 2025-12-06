@@ -2,9 +2,11 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { BookOpen, Mail, Lock, User, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useWoodyButton } from "@/hooks/useWoodyButton";
 
 export default function Auth() {
   const navigate = useNavigate();
+  const { handleWoodyClick } = useWoodyButton();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -201,12 +203,8 @@ export default function Auth() {
             {/* Submit button */}
             <button
               type="submit"
-              className={cn(
-                "w-full py-4 rounded-lg font-medium text-xl transition-colors mt-4",
-                "bg-primary text-primary-foreground",
-                "hover:bg-primary/90",
-                "focus:outline-none focus:ring-2 focus:ring-primary/50"
-              )}
+              onClick={handleWoodyClick}
+              className="btn-woody w-full py-4 rounded-lg font-medium text-xl text-white mt-4"
             >
               {isLogin ? "Sign In" : "Create Account"}
             </button>

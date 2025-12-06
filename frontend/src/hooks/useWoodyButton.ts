@@ -4,7 +4,7 @@ import { useCallback } from 'react';
  * Hook to add woody forest button effects with leaf animations
  */
 export const useWoodyButton = () => {
-  const handleWoodyClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleWoodyClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
     const button = event.currentTarget;
     const rect = button.getBoundingClientRect();
     const x = event.clientX - rect.left;
