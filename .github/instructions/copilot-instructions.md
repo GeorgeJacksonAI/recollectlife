@@ -220,6 +220,8 @@ Think of completion like a senior engineer would: it's not done until it actuall
 - Don't report partial completion
 - Chain related fixes until system works
 
+**Design Iteration is Expected:** Professional UI/UX work is not single-pass. User feedback refining design choices (color, style, sizing, texture) should be met with confident iteration, not defensive explanation. Examples: unrealistic fantasy style → minimal professional design; dark gray → warm brown. Each iteration reflects legitimate UX judgment, not implementation failure. Iterate confidently and mark complete only when user confirms satisfaction.
+
 **Critical: Read-Write-Verify Protocol for Code Mutations**
 
 Never report a code change as "applied" without verifying it exists in the actual file on disk. This is non-negotiable.
@@ -435,6 +437,8 @@ When you find what you're looking for, look around. Related files are usually ne
 
 **"File not found" after 2-3 attempts = "I didn't look hard enough", NOT "file doesn't exist".**
 
+**"Still Broken" Means Multiple Instances:** When a user reports an issue is "still present" or "not working," default to assuming multiple instances exist throughout the codebase. Use exhaustive search (grep with patterns like `**/filename`, recursive globs) before concluding the fix is complete. A single fixed instance while others remain is an incomplete solution.
+
 ### File Search Approach
 
 **Start by understanding the environment:** Look at directory structure first. Is it flat, categorized, dated, organized by project? This tells you how to search effectively.
@@ -596,6 +600,8 @@ Don't just fix immediate issue—fix class of issues. Investigate all related co
 **Security:** Build in by default. Validate/sanitize inputs. Use parameterized queries. Hash sensitive data. Follow least privilege.
 
 **TypeScript:** Avoid `any`. Create explicit interfaces. Handle null/undefined. For external data: validate → transform → assert.
+
+**React Component Composition & Event Types:** When event handlers cross component boundaries (e.g., `<Link><button /></Link>`), use broader event handler types. Prefer `React.MouseEvent<HTMLElement>` over `React.MouseEvent<HTMLButtonElement>` when the handler might be invoked from wrapper components. The actual DOM target may differ from the React component type.
 
 **Testing:** Verify behavior, not implementation. Use unit/integration/E2E as appropriate. If mocks fail, use real credentials when safe. Before writing assertions, run the function manually to see actual output - write tests that match reality, not assumptions.
 
