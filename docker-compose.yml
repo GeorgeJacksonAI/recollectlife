@@ -10,13 +10,30 @@ services:
     ports:
       - "8000:8000"
     networks:
-      - backend-network
+      - app-network
+    depends_on:
+      - redis
+    
+  frontend:
+    image: node:18-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    environment:
+      - VITE_API_URL=http://backend:8000
+    ports:
+      - "8080:8080"
+    networks:
+      - app-network
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - backend
     
   redis:
     image: redis:alpine
     networks:
-      - backend-network
+      - app-network
 
 networks:
-  backend-network:
+  app-network:
     driver: bridge
