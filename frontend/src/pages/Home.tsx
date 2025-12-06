@@ -59,11 +59,16 @@ export default function Home() {
             backgroundImage: 'url(/background-hero.jpg)',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat'
+            backgroundRepeat: 'no-repeat',
+            imageRendering: 'crisp-edges',
+            WebkitBackfaceVisibility: 'hidden',
+            backfaceVisibility: 'hidden',
+            transform: 'translateZ(0)',
+            willChange: 'transform'
           }}
         >
-          {/* Gradient Overlay for Text Readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-background" />
+          {/* Lighter Gradient Overlay for Text Readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/15 to-background/80" />
         </div>
 
         {/* Content */}
