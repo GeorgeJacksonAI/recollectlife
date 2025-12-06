@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { BookOpen, ArrowRight, Feather, Clock, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useWoodyButton } from "@/hooks/useWoodyButton";
 
 const features = [
   {
@@ -21,6 +22,8 @@ const features = [
 ];
 
 export default function Home() {
+  const { handleWoodyClick } = useWoodyButton();
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -39,12 +42,13 @@ export default function Home() {
             </Link>
             <Link
               to="/auth"
-              className={cn(
-                "px-6 py-3 rounded-lg text-lg font-medium transition-all duration-300",
-                "bg-[#E8956F] text-white hover:bg-[#D67D5A] hover:scale-105"
-              )}
             >
-              Get Started
+              <button
+                onClick={handleWoodyClick}
+                className="btn-woody px-6 py-3 rounded-lg text-lg font-medium text-white"
+              >
+                Get Started
+              </button>
             </Link>
           </div>
         </div>
@@ -85,16 +89,14 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              to="/auth"
-              className={cn(
-                "px-8 py-4 rounded-lg font-medium text-xl transition-all duration-300",
-                "bg-[#E8956F] text-white hover:bg-[#D67D5A] hover:scale-105 hover:shadow-xl",
-                "flex items-center gap-3"
-              )}
-            >
-              Begin Your Story
-              <ArrowRight className="w-5 h-5" />
+            <Link to="/auth">
+              <button
+                onClick={handleWoodyClick}
+                className="btn-woody px-8 py-4 rounded-lg font-medium text-xl flex items-center gap-3 text-white"
+              >
+                Begin Your Story
+                <ArrowRight className="w-5 h-5" />
+              </button>
             </Link>
           </div>
         </div>
