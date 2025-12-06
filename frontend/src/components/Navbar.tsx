@@ -7,7 +7,7 @@ export default function Navbar() {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 px-4 pt-4 md:px-6 md:pt-6">
-      <nav className="max-w-6xl mx-auto bg-white/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-lg shadow-black/5">
+      <nav className="max-w-6xl mx-auto bg-white/70 backdrop-blur-md border border-white/20 rounded-2xl shadow-lg shadow-black/5">
         <div className="px-6 md:px-8 h-16 md:h-18 flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5 group">
