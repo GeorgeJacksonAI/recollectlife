@@ -5,9 +5,11 @@ from backend.app.api.endpoints import messages
 
 app = FastAPI(title="Life Story Game API")
 
-# Configure CORS for Vercel Frontend
+# Configure CORS for Frontend
 origins = [
-    "http://localhost:5173",  # Local Vite
+    "http://localhost:5173",  # Local Vite (default)
+    "http://localhost:8080",  # Local Vite (Lovable frontend)
+    "http://localhost:3000",  # Alternative dev server
     "https://your-vercel-app.vercel.app",  # Vercel Prod
 ]
 
