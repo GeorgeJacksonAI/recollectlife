@@ -57,7 +57,7 @@ export default function Home() {
           className="absolute inset-0 z-0"
           style={{
             backgroundImage: 'url(/background-hero.jpg)',
-            backgroundSize: 'cover',
+            backgroundSize: '120%',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
             imageRendering: 'crisp-edges',
