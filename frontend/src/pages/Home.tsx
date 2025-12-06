@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { BookOpen, ArrowRight, Feather, Clock, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWoodyButton } from "@/hooks/useWoodyButton";
+import Navbar from "@/components/Navbar";
 
 const features = [
   {
@@ -26,36 +27,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="border-b border-border/60 bg-[#FFF8F0]/95 backdrop-blur-sm">
-        <div className="max-w-4xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <BookOpen className="w-7 h-7 text-[#5C3D2E]" />
-            <span className="text-xl font-semibold text-[#5C3D2E] font-story">Life Story</span>
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link
-              to="/auth"
-              className="text-lg text-[#8B6F5C] hover:text-[#5C3D2E] transition-colors"
-            >
-              Sign In
-            </Link>
-            <Link
-              to="/auth"
-            >
-              <button
-                onClick={handleWoodyClick}
-                className="btn-woody px-6 py-3 rounded-lg text-lg font-medium text-white"
-              >
-                Get Started
-              </button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero Section */}
-      <section className="relative py-32 md:py-40 px-6 overflow-hidden">
+      <section className="relative pt-36 md:pt-44 pb-32 md:pb-40 px-6 overflow-hidden">
         {/* Background Image */}
         <div
           className="absolute inset-0 z-0 hero-background-mobile"
