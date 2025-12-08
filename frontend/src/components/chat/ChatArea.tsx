@@ -49,9 +49,13 @@ const initialMessages: Message[] = [
   },
 ];
 
-export function ChatArea() {
+interface ChatAreaProps {
+  sendMessage: any;
+  storyId: number | undefined;
+}
+
+export function ChatArea({ sendMessage, storyId }: ChatAreaProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
-  const [isTyping, setIsTyping] = useState(false);
   const [selectedAge, setSelectedAge] = useState<string>("31-45");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -61,9 +65,9 @@ export function ChatArea() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isTyping]);
+  }, [messages, sendMessage.isPending]);
 
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = async (content: string) => {
     const newMessage: Message = {
       id: Date.now().toString(),
       type: "user",
@@ -71,17 +75,23 @@ export function ChatArea() {
     };
     setMessages((prev) => [...prev, newMessage]);
 
-    // Simulate AI response
-    setIsTyping(true);
-    setTimeout(() => {
-      setIsTyping(false);
+    try {
+      const response = await sendMessage.mutateAsync({ message: content });
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: "That's a beautiful memory. The details you remember — the light, the sounds, the feelings — they all paint a picture of your early world. Can you tell me more about the people who lived in that home with you? Who were the most important figures in your childhood?",
+        content: response.response,
       };
       setMessages((prev) => [...prev, aiResponse]);
-    }, 2000);
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: "ai",
+        content: "Sorry, I couldn't process your message. Please try again.",
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    }
   };
 
   const handleAgeSelect = (age: string) => {
@@ -102,12 +112,12 @@ export function ChatArea() {
               )}
             </div>
           ))}
-          {isTyping && <ChatMessage type="ai" content="" isTyping />}
+          {sendMessage.isPending && <ChatMessage type="ai" content="" isTyping />}
           <div ref={messagesEndRef} />
         </div>
       </div>
 
-      <InputBar onSend={handleSendMessage} disabled={isTyping} />
+      <InputBar onSend={handleSendMessage} disabled={sendMessage.isPending} />
     </div>
   );
 }
