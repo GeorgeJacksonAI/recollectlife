@@ -1,37 +1,17 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, BookOpen, ArrowRight, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StoryCard } from "@/components/stories/StoryCard";
-
-// Mock data for stories
-const mockStories = [
-  {
-    id: "1",
-    title: "Growing Up in the Countryside",
-    lastEdited: "2 days ago",
-    progress: "Chapter 3 of 6",
-    status: "in-progress" as const,
-  },
-  {
-    id: "2",
-    title: "My Teaching Career",
-    lastEdited: "1 week ago",
-    progress: "Completed",
-    status: "completed" as const,
-  },
-  {
-    id: "3",
-    title: "Family Traditions",
-    lastEdited: "3 days ago",
-    progress: "Chapter 1 of 4",
-    status: "in-progress" as const,
-  },
-];
+import { useStories, useDeleteStory } from "@/hooks/useStories";
+import { useLogout, useCurrentUser } from "@/hooks/useAuth";
+import { formatDistanceToNow } from "date-fns";
 
 export default function MyStories() {
   const navigate = useNavigate();
-  const [stories, setStories] = useState(mockStories);
+  const { data: stories, isLoading } = useStories();
+  const { data: user } = useCurrentUser();
+  const deleteMutation = useDeleteStory();
+  const logout = useLogout();
 
   const currentDate = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -40,15 +20,14 @@ export default function MyStories() {
     day: "numeric",
   });
 
-  const inProgressStories = stories.filter((s) => s.status === "in-progress");
-  const completedStories = stories.filter((s) => s.status === "completed");
-
   const handleContinue = (id: string) => {
     navigate(`/story/${id}`);
   };
 
-  const handleDelete = (id: string) => {
-    setStories(stories.filter((s) => s.id !== id));
+  const handleDelete = async (id: string) => {
+    if (confirm("Are you sure you want to delete this story?")) {
+      await deleteMutation.mutateAsync(parseInt(id));
+    }
   };
 
   const handleNewStory = () => {
@@ -56,8 +35,19 @@ export default function MyStories() {
   };
 
   const handleLogout = () => {
-    navigate("/");
+    logout();
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-lg text-muted-foreground">Loading your stories...</p>
+      </div>
+    );
+  }
+
+  const storiesArray = stories || [];
+  const userName = user?.display_name || "there";
 
   return (
     <div className="min-h-screen bg-background">
@@ -95,7 +85,7 @@ export default function MyStories() {
         <div className="mb-10">
           <p className="text-muted-foreground text-base mb-2">{currentDate}</p>
           <h1 className="font-story text-4xl font-semibold text-foreground mb-2">
-            Welcome back, Margaret
+            Welcome back, {userName}
           </h1>
           <p className="text-muted-foreground text-lg">
             Your stories are waiting to be told.
@@ -112,10 +102,10 @@ export default function MyStories() {
             Start New Story
           </Button>
 
-          {inProgressStories.length > 0 && (
+          {storiesArray.length > 0 && (
             <Button
               variant="outline"
-              onClick={() => handleContinue(inProgressStories[0].id)}
+              onClick={() => handleContinue(storiesArray[0].id.toString())}
               className="h-14 px-6 text-lg font-medium"
             >
               Continue Last Story
@@ -128,35 +118,27 @@ export default function MyStories() {
         <div className="flex gap-8 mb-10 pb-10 border-b border-border">
           <div>
             <p className="text-3xl font-semibold text-foreground">
-              {stories.length}
+              {storiesArray.length}
             </p>
             <p className="text-muted-foreground text-base">Total Stories</p>
-          </div>
-          <div>
-            <p className="text-3xl font-semibold text-foreground">
-              {completedStories.length}
-            </p>
-            <p className="text-muted-foreground text-base">Completed</p>
-          </div>
-          <div>
-            <p className="text-3xl font-semibold text-foreground">
-              {inProgressStories.length}
-            </p>
-            <p className="text-muted-foreground text-base">In Progress</p>
           </div>
         </div>
 
         {/* Stories Grid */}
-        {stories.length > 0 ? (
+        {storiesArray.length > 0 ? (
           <div>
             <h2 className="font-story text-2xl font-semibold text-foreground mb-6">
               Your Stories
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {stories.map((story) => (
+              {storiesArray.map((story) => (
                 <StoryCard
                   key={story.id}
-                  {...story}
+                  id={story.id.toString()}
+                  title={story.title}
+                  lastEdited={formatDistanceToNow(new Date(story.updated_at), { addSuffix: true })}
+                  progress=""
+                  status="in-progress"
                   onContinue={handleContinue}
                   onDelete={handleDelete}
                 />
