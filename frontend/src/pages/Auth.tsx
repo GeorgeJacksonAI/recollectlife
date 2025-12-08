@@ -3,10 +3,13 @@ import { useNavigate, Link } from "react-router-dom";
 import { BookOpen, Mail, Lock, User, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWoodyButton } from "@/hooks/useWoodyButton";
+import { useRegister, useLogin } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Auth() {
   const navigate = useNavigate();
   const { handleWoodyClick } = useWoodyButton();
+  const { toast } = useToast();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -16,6 +19,9 @@ export default function Auth() {
     confirmPassword: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const registerMutation = useRegister();
+  const loginMutation = useLogin();
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -45,10 +51,29 @@ export default function Auth() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
-      navigate("/dashboard");
+    if (!validateForm()) return;
+
+    try {
+      if (mode === "register") {
+        await registerMutation.mutateAsync({
+          email: formData.email,
+          password: formData.password,
+          display_name: formData.name,
+        });
+      } else {
+        await loginMutation.mutateAsync({
+          email: formData.email,
+          password: formData.password,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: mode === "register" ? "Registration failed" : "Login failed",
+        description: error.message || "An error occurred. Please try again.",
+      });
     }
   };
 
@@ -204,9 +229,14 @@ export default function Auth() {
             <button
               type="submit"
               onClick={handleWoodyClick}
-              className="btn-woody w-full py-4 rounded-lg font-medium text-xl text-white mt-4"
+              disabled={registerMutation.isPending || loginMutation.isPending}
+              className="btn-woody w-full py-4 rounded-lg font-medium text-xl text-white mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLogin ? "Sign In" : "Create Account"}
+              {registerMutation.isPending || loginMutation.isPending
+                ? "Loading..."
+                : isLogin
+                ? "Sign In"
+                : "Create Account"}
             </button>
           </form>
 
