@@ -32,10 +32,12 @@ python-multipart>=0.0.7
 
 pydantic>=2.5.3,<3.0.0
 pydantic-settings>=2.1.0
+email-validator>=2.1.0
 
 ## Authentication / security
 
 passlib[bcrypt]>=1.7.4
+bcrypt<4.0.0  # Pin to avoid passlib compatibility issues
 python-jose[cryptography]>=3.3.0
 
 ## Logging & monitoring
