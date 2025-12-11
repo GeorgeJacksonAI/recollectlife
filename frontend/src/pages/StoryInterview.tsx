@@ -1,24 +1,44 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, BookOpen, Feather } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatArea } from "@/components/chat/ChatArea";
 import { ChapterSummaryDrawer } from "@/components/chat/ChapterSummaryDrawer";
-import { useStory } from "@/hooks/useStories";
+import { useStory, useCreateStory } from "@/hooks/useStories";
 import { useSendMessage } from "@/hooks/useChat";
 
 export default function StoryInterview() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  
+  const [isCreatingStory, setIsCreatingStory] = useState(false);
+
   const { data: story, isLoading } = useStory(id ? parseInt(id) : undefined);
   const sendMessage = useSendMessage(id ? parseInt(id) : undefined);
+  const createStory = useCreateStory();
 
-  if (isLoading) {
+  // Auto-create story when id === "new"
+  useEffect(() => {
+    if (id === "new" && !isCreatingStory && !createStory.isPending) {
+      setIsCreatingStory(true);
+      createStory.mutateAsync({
+        title: "My Life Story",
+      }).then((newStory) => {
+        // Navigate to the newly created story
+        navigate(`/story/${newStory.id}`, { replace: true });
+      }).catch((error) => {
+        console.error("Failed to create story:", error);
+        setIsCreatingStory(false);
+      });
+    }
+  }, [id, isCreatingStory, createStory, navigate]);
+
+  if (isLoading || (id === "new" && (isCreatingStory || createStory.isPending))) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-lg text-muted-foreground">Loading story...</p>
+        <p className="text-lg text-muted-foreground">
+          {id === "new" ? "Creating your story..." : "Loading story..."}
+        </p>
       </div>
     );
   }
