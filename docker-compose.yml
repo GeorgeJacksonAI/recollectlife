@@ -20,7 +20,7 @@ services:
     volumes:
       - ./frontend:/app
     environment:
-      - VITE_API_URL=http://backend:8000
+      - VITE_API_URL=http://localhost:8000
     ports:
       - "8080:8080"
     networks:
@@ -28,6 +28,8 @@ services:
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     depends_on:
       - backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     
   redis:
     image: redis:alpine
