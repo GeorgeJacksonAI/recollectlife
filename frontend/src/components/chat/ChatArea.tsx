@@ -3,6 +3,8 @@ import { PhaseTimeline } from "./PhaseTimeline";
 import { ChatMessage } from "./ChatMessage";
 import { AgeSelectionCards } from "./AgeSelectionCards";
 import { InputBar } from "./InputBar";
+import { useStoryMessages } from "@/hooks/useChat";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Message {
   id: string;
@@ -20,44 +22,24 @@ const initialPhases = [
   { id: "synthesis", label: "Synthesis", status: "inactive" as const },
 ];
 
-const initialMessages: Message[] = [
-  {
-    id: "1",
-    type: "ai",
-    content: "Welcome! I'm here to help you tell your life story chronologically. This will be a journey through your memories, capturing the moments that shaped who you are. Ready to begin?",
-  },
-  {
-    id: "2",
-    type: "user",
-    content: "Yes, I am.",
-  },
-  {
-    id: "3",
-    type: "ai",
-    content: "Great! To customize the interview and tailor our conversation to your life experiences, please select your age range:",
-    showAgeCards: true,
-  },
-  {
-    id: "4",
-    type: "user",
-    content: "31-45",
-  },
-  {
-    id: "5",
-    type: "ai",
-    content: "Perfect. Let's start with your childhood — those formative years that often hold our most vivid memories. What is your earliest memory of home? It could be a place, a feeling, or even a specific moment.",
-  },
-];
-
 interface ChatAreaProps {
   sendMessage: any;
   storyId: number | undefined;
 }
 
 export function ChatArea({ sendMessage, storyId }: ChatAreaProps) {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const queryClient = useQueryClient();
+  const { data: apiMessages = [], isLoading } = useStoryMessages(storyId);
   const [selectedAge, setSelectedAge] = useState<string>("31-45");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Convert API messages to display format
+  const messages: Message[] = apiMessages.map((msg) => ({
+    id: msg.id?.toString() || Date.now().toString(),
+    type: msg.role === "assistant" ? "ai" : "user",
+    content: msg.content,
+    showAgeCards: false, // Can add logic to detect age selection prompts
+  }));
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -68,35 +50,26 @@ export function ChatArea({ sendMessage, storyId }: ChatAreaProps) {
   }, [messages, sendMessage.isPending]);
 
   const handleSendMessage = async (content: string) => {
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      type: "user",
-      content,
-    };
-    setMessages((prev) => [...prev, newMessage]);
-
     try {
-      const response = await sendMessage.mutateAsync({ message: content });
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "ai",
-        content: response.response,
-      };
-      setMessages((prev) => [...prev, aiResponse]);
+      await sendMessage.mutateAsync({ message: content });
+      // Invalidate messages query to refetch updated conversation
+      queryClient.invalidateQueries({ queryKey: ['stories', storyId, 'messages'] });
     } catch (error) {
       console.error("Failed to send message:", error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "ai",
-        content: "Sorry, I couldn't process your message. Please try again.",
-      };
-      setMessages((prev) => [...prev, errorMessage]);
     }
   };
 
   const handleAgeSelect = (age: string) => {
     setSelectedAge(age);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-lg text-muted-foreground">Loading conversation...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
