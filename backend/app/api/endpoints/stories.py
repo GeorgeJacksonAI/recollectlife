@@ -2,6 +2,7 @@
 Story management endpoints for creating and managing user stories.
 """
 
+from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -10,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.core.auth import get_current_active_user
 from backend.app.db.session import get_db
+from backend.app.models.message import Message
 from backend.app.models.story import Story
 from backend.app.models.user import User
 
@@ -46,6 +48,20 @@ class StoryResponse(BaseModel):
     current_phase: str
     age_range: Optional[str]
     status: str
+
+    class Config:
+        from_attributes = True
+
+
+class MessageResponse(BaseModel):
+    """Message response."""
+
+    id: int
+    story_id: int
+    role: str
+    content: str
+    phase_context: Optional[str]
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -229,3 +245,48 @@ def delete_story(
     db.commit()
 
     return None
+
+
+@router.get("/{story_id}/messages", response_model=List[MessageResponse])
+def get_story_messages(
+    story_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get all messages for a story.
+
+    Args:
+        story_id: Story ID
+        current_user: Authenticated user
+        db: Database session
+
+    Returns:
+        List of messages for the story
+
+    Raises:
+        HTTPException: If story not found or not owned by user
+    """
+    story = db.query(Story).filter(Story.id == story_id).first()
+
+    if not story:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Story not found"
+        )
+
+    # Ensure user owns the story
+    if story.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this story",
+        )
+
+    # Fetch messages for this story, ordered by creation time
+    messages = (
+        db.query(Message)
+        .filter(Message.story_id == story_id)
+        .order_by(Message.created_at.asc())
+        .all()
+    )
+
+    return messages
