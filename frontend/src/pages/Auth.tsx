@@ -235,8 +235,8 @@ export default function Auth() {
               {registerMutation.isPending || loginMutation.isPending
                 ? "Loading..."
                 : isLogin
-                ? "Sign In"
-                : "Create Account"}
+                  ? "Sign In"
+                  : "Create Account"}
             </button>
           </form>
 
