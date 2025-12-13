@@ -7,8 +7,24 @@ interface ChatMessageProps {
   isTyping?: boolean;
 }
 
+// Filter out system markers from displayed content
+function filterSystemMarkers(content: string): string {
+  return content
+    .replace(/\[Moving to next phase: [^\]]+\]/g, "")
+    .replace(/\[Age selected via button: [^\]]+\]/g, "")
+    .trim();
+}
+
 export function ChatMessage({ type, content, isTyping }: ChatMessageProps) {
   const isAI = type === "ai";
+  
+  // Filter system markers from user messages
+  const displayContent = filterSystemMarkers(content);
+  
+  // Don't render empty messages (e.g., messages that were only markers)
+  if (!isTyping && !displayContent) {
+    return null;
+  }
 
   return (
     <div
@@ -41,7 +57,7 @@ export function ChatMessage({ type, content, isTyping }: ChatMessageProps) {
             <span className="w-2.5 h-2.5 bg-current rounded-full animate-pulse-soft" style={{ animationDelay: "400ms" }} />
           </div>
         ) : (
-          <p className="text-lg leading-relaxed">{content}</p>
+          <p className="text-lg leading-relaxed">{displayContent}</p>
         )}
       </div>
     </div>
