@@ -1,3 +1,4 @@
+import { Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Snippet } from "@/hooks/useProjects";
 
@@ -43,6 +44,7 @@ interface SnippetCardProps {
     snippet: Snippet;
     index?: number;
     className?: string;
+    onEdit?: (snippet: Snippet) => void;
 }
 
 /**
@@ -53,28 +55,57 @@ interface SnippetCardProps {
  * - Title and content with proper typography
  * - Phase indicator for context
  * - Consistent aspect ratio for printing
+ * - Edit button on hover (when onEdit is provided)
  */
-export function SnippetCard({ snippet, index, className }: SnippetCardProps) {
+export function SnippetCard({ snippet, index, className, onEdit }: SnippetCardProps) {
     const gradient = themeGradients[snippet.theme] || themeGradients.default;
     const phaseName = phaseDisplayNames[snippet.phase] || snippet.phase;
+
+    const handleEditClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onEdit?.(snippet);
+    };
 
     return (
         <div
             className={cn(
                 // Card structure
-                "relative overflow-hidden rounded-xl",
+                "group relative overflow-hidden rounded-xl",
                 // Aspect ratio for print consistency (roughly 2.5:3.5 like playing cards)
                 "aspect-[5/7] min-h-[280px]",
                 // Gradient background
                 "bg-gradient-to-br",
                 gradient,
                 // Shadow and hover effects
-                "shadow-lg hover:shadow-xl transition-shadow duration-300",
+                "shadow-lg hover:shadow-xl transition-all duration-300",
+                // Cursor when editable
+                onEdit && "cursor-pointer",
                 className
             )}
             role="article"
             aria-label={`Project card: ${snippet.title}`}
+            onClick={onEdit ? handleEditClick : undefined}
+            tabIndex={onEdit ? 0 : undefined}
+            onKeyDown={onEdit ? (e) => e.key === "Enter" && onEdit(snippet) : undefined}
         >
+            {/* Edit button - appears on hover */}
+            {onEdit && (
+                <button
+                    onClick={handleEditClick}
+                    className={cn(
+                        "absolute top-3 left-1/2 -translate-x-1/2 z-20",
+                        "flex items-center gap-2 px-3 py-1.5",
+                        "bg-white/95 backdrop-blur-sm rounded-full",
+                        "text-sm font-medium text-gray-700",
+                        "opacity-0 group-hover:opacity-100 transition-opacity duration-200",
+                        "hover:bg-white shadow-lg"
+                    )}
+                    aria-label={`Edit ${snippet.title}`}
+                >
+                    <Pencil className="w-3.5 h-3.5" />
+                    Edit
+                </button>
+            )}
             {/* Card number badge (optional) */}
             {index !== undefined && (
                 <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
