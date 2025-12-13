@@ -1,13 +1,28 @@
 import { useState } from "react";
-import { Send, Mic } from "lucide-react";
+import { Send, Mic, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface InputBarProps {
   onSend: (message: string) => void;
+  onNextChapter?: () => void;
   disabled?: boolean;
+  showNextChapter?: boolean;
+  currentPhase?: string;
+  nextPhaseName?: string;
 }
 
-export function InputBar({ onSend, disabled }: InputBarProps) {
+// Phases where "Next Chapter" button should NOT appear
+const PHASES_WITHOUT_NEXT_BUTTON = ["GREETING", "SYNTHESIS"];
+
+export function InputBar({ 
+  onSend, 
+  onNextChapter,
+  disabled, 
+  showNextChapter = false,
+  currentPhase = "",
+  nextPhaseName = ""
+}: InputBarProps) {
   const [message, setMessage] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -17,6 +32,17 @@ export function InputBar({ onSend, disabled }: InputBarProps) {
       setMessage("");
     }
   };
+
+  const handleNextChapter = () => {
+    if (onNextChapter && !disabled) {
+      onNextChapter();
+    }
+  };
+
+  // Determine if we should show the Next Chapter button
+  const shouldShowNextChapter = showNextChapter && 
+    !PHASES_WITHOUT_NEXT_BUTTON.includes(currentPhase) &&
+    currentPhase !== "";
 
   return (
     <div className="p-5 border-t border-border bg-card">
@@ -71,9 +97,24 @@ export function InputBar({ onSend, disabled }: InputBarProps) {
         </button>
       </form>
 
-      <p className="text-sm text-muted-foreground text-center mt-4">
-        Take your time. There's no rush.
-      </p>
+      <div className="flex items-center justify-between mt-4">
+        <p className="text-sm text-muted-foreground">
+          Take your time. There's no rush.
+        </p>
+        
+        {shouldShowNextChapter && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleNextChapter}
+            disabled={disabled}
+            className="flex items-center gap-2 text-sm"
+          >
+            Next Chapter
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
