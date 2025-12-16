@@ -375,7 +375,7 @@ export const useDeleteSnippet = () => {
             projectId: number;
             permanent?: boolean;
         }): Promise<Snippet> => {
-            const url = permanent 
+            const url = permanent
                 ? `/api/snippets/${snippetId}?permanent=true`
                 : `/api/snippets/${snippetId}`;
             const response = await api.delete<Snippet>(url);

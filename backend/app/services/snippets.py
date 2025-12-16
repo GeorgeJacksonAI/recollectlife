@@ -72,7 +72,9 @@ class SnippetService:
             {"role": str(msg.role), "content": str(msg.content)} for msg in messages
         ]
 
-    def get_existing_snippets(self, story_id: int, include_archived: bool = False) -> Dict:
+    def get_existing_snippets(
+        self, story_id: int, include_archived: bool = False
+    ) -> Dict:
         """
         Get existing snippets for a story from the database.
 
@@ -89,11 +91,11 @@ class SnippetService:
                 - error (str|None): None
         """
         query = self.db.query(Snippet).filter(Snippet.story_id == story_id)
-        
+
         # Only return active snippets by default
         if not include_archived:
             query = query.filter(Snippet.is_active == True)  # noqa: E712
-        
+
         snippets = query.order_by(Snippet.created_at.asc()).all()
 
         snippet_list = [s.to_dict() for s in snippets]
@@ -136,7 +138,7 @@ class SnippetService:
     def delete_snippets(self, story_id: int) -> int:
         """
         Soft-delete unlocked snippets for a story (set is_active=False).
-        
+
         Locked snippets are preserved during regeneration.
 
         Args:
@@ -189,7 +191,7 @@ class SnippetService:
         snippet = self.db.query(Snippet).filter(Snippet.id == snippet_id).first()
         if not snippet:
             return None
-        
+
         snippet.is_locked = not snippet.is_locked
         self.db.commit()
         self.db.refresh(snippet)
@@ -208,7 +210,7 @@ class SnippetService:
         snippet = self.db.query(Snippet).filter(Snippet.id == snippet_id).first()
         if not snippet:
             return None
-        
+
         snippet.is_active = True
         self.db.commit()
         self.db.refresh(snippet)
@@ -227,7 +229,7 @@ class SnippetService:
         snippet = self.db.query(Snippet).filter(Snippet.id == snippet_id).first()
         if not snippet:
             return None
-        
+
         snippet.is_active = False
         self.db.commit()
         self.db.refresh(snippet)

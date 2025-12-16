@@ -60,6 +60,24 @@ export default function ProjectInterview() {
         }
     };
 
+    const handleLockSnippet = (snippetId: number) => {
+        if (projectId) {
+            lockSnippet.mutate({ snippetId, projectId });
+        }
+    };
+
+    const handleDeleteSnippet = (snippetId: number) => {
+        if (projectId) {
+            deleteSnippet.mutate({ snippetId, projectId });
+        }
+    };
+
+    const handleRestoreSnippet = (snippetId: number) => {
+        if (projectId) {
+            restoreSnippet.mutate({ snippetId, projectId });
+        }
+    };
+
     if (isLoading || (id === "new" && (isCreatingProject || createProject.isPending))) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
@@ -79,6 +97,8 @@ export default function ProjectInterview() {
     }
 
     const snippets = snippetsData?.snippets || [];
+    const archivedSnippets = archivedData?.snippets || [];
+    const lockedCount = snippetsData?.locked_count || 0;
 
     return (
         <div className="flex flex-col h-screen w-full overflow-hidden bg-background">
@@ -131,12 +151,17 @@ export default function ProjectInterview() {
                 isOpen={isOverlayOpen}
                 onClose={() => setIsOverlayOpen(false)}
                 snippets={snippets}
+                archivedSnippets={archivedSnippets}
                 isLoading={isLoadingSnippets}
                 isGenerating={generateSnippets.isPending}
                 onGenerate={handleGenerateSnippets}
                 onUpdateSnippet={handleUpdateSnippet}
+                onLockSnippet={handleLockSnippet}
+                onDeleteSnippet={handleDeleteSnippet}
+                onRestoreSnippet={handleRestoreSnippet}
                 isUpdatingSnippet={updateSnippet.isPending}
                 projectTitle={project?.title}
+                lockedCount={lockedCount}
             />
         </div>
     );

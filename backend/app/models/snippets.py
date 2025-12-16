@@ -42,8 +42,12 @@ class Snippet(Base):
     phase = Column(String(50), nullable=True)  # CHILDHOOD, YOUNG_ADULT, ADULTHOOD, etc.
 
     # Card management fields
-    is_locked = Column(Boolean, default=False, nullable=False)  # Protected during regeneration
-    is_active = Column(Boolean, default=True, nullable=False, index=True)  # Soft-delete flag
+    is_locked = Column(
+        Boolean, default=False, nullable=False
+    )  # Protected during regeneration
+    is_active = Column(
+        Boolean, default=True, nullable=False, index=True
+    )  # Soft-delete flag
 
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow)

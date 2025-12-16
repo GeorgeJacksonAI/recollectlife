@@ -189,8 +189,8 @@ export function SnippetsOverlay({
                                     onClick={() => handleViewModeChange('active')}
                                     className={cn(
                                         "px-3 py-2 text-sm font-medium transition-colors",
-                                        viewMode === 'active' 
-                                            ? "bg-primary text-primary-foreground" 
+                                        viewMode === 'active'
+                                            ? "bg-primary text-primary-foreground"
                                             : "bg-background text-muted-foreground hover:bg-muted"
                                     )}
                                 >
@@ -200,8 +200,8 @@ export function SnippetsOverlay({
                                     onClick={() => handleViewModeChange('archived')}
                                     className={cn(
                                         "px-3 py-2 text-sm font-medium transition-colors flex items-center gap-1.5",
-                                        viewMode === 'archived' 
-                                            ? "bg-primary text-primary-foreground" 
+                                        viewMode === 'archived'
+                                            ? "bg-primary text-primary-foreground"
                                             : "bg-background text-muted-foreground hover:bg-muted"
                                     )}
                                 >
@@ -266,13 +266,9 @@ export function SnippetsOverlay({
                                     onEdit={viewMode === 'active' && onUpdateSnippet ? handleEditCard : undefined}
                                     onLock={viewMode === 'active' && onLockSnippet ? handleLockCard : undefined}
                                     onDelete={viewMode === 'active' && onDeleteSnippet ? handleDeleteCard : undefined}
+                                    onRestore={viewMode === 'archived' && onRestoreSnippet ? handleRestoreCard : undefined}
+                                    isArchived={viewMode === 'archived'}
                                 />
-                            ))}
-                            {/* Restore button for archived cards */}
-                            {viewMode === 'archived' && currentSnippets.map((snippet) => (
-                                <div key={`restore-${snippet.id}`} className="absolute bottom-4 left-1/2 -translate-x-1/2">
-                                    {/* Restore action shown on the card itself */}
-                                </div>
                             ))}
                         </div>
                     ) : viewMode === 'archived' ? (
@@ -339,7 +335,7 @@ export function SnippetsOverlay({
             {/* Regeneration Warning Modal */}
             {showRegenerateWarning && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center">
-                    <div 
+                    <div
                         className="absolute inset-0 bg-black/50"
                         onClick={() => setShowRegenerateWarning(false)}
                     />
@@ -355,7 +351,7 @@ export function SnippetsOverlay({
                                 <p className="text-muted-foreground mb-4">
                                     {lockedCount > 0 ? (
                                         <>
-                                            This will replace <strong>{unlockedCount} unlocked {unlockedCount === 1 ? 'card' : 'cards'}</strong> with new ones. 
+                                            This will replace <strong>{unlockedCount} unlocked {unlockedCount === 1 ? 'card' : 'cards'}</strong> with new ones.
                                             Your <strong>{lockedCount} locked {lockedCount === 1 ? 'card' : 'cards'}</strong> will be preserved.
                                         </>
                                     ) : (
