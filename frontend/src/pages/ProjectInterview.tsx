@@ -4,7 +4,7 @@ import { ArrowLeft, FolderOpen, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatArea } from "@/components/chat/ChatArea";
 import { SnippetsOverlay } from "@/components/projects/SnippetsOverlay";
-import { useProject, useCreateProject, useSnippets, useProjectSnippets, useUpdateSnippet } from "@/hooks/useProjects";
+import { useProject, useCreateProject, useSnippets, useProjectSnippets, useUpdateSnippet, useArchivedSnippets, useLockSnippet, useDeleteSnippet, useRestoreSnippet } from "@/hooks/useProjects";
 import type { UpdateSnippetDto } from "@/hooks/useProjects";
 import { useSendMessage } from "@/hooks/useChat";
 
@@ -25,8 +25,12 @@ export default function ProjectInterview() {
         data: snippetsData,
         isLoading: isLoadingSnippets
     } = useSnippets(projectId);
+    const { data: archivedData } = useArchivedSnippets(projectId);
     const generateSnippets = useProjectSnippets();
     const updateSnippet = useUpdateSnippet();
+    const lockSnippet = useLockSnippet();
+    const deleteSnippet = useDeleteSnippet();
+    const restoreSnippet = useRestoreSnippet();
 
     // Auto-create project when id === "new"
     useEffect(() => {
@@ -96,7 +100,7 @@ export default function ProjectInterview() {
                         className="h-11 px-4 text-base"
                     >
                         <Sparkles className="w-5 h-5 mr-2" />
-                        View Project
+                        View Stories
                         {snippets.length > 0 && (
                             <span className="ml-2 bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-full">
                                 {snippets.length}

@@ -33,6 +33,8 @@ class SnippetItem(BaseModel):
     content: str
     phase: Optional[str] = None
     theme: Optional[str] = None
+    is_locked: bool = False
+    is_active: bool = True
     created_at: Optional[datetime] = None
 
     class Config:
@@ -46,7 +48,17 @@ class SnippetsResponse(BaseModel):
     snippets: List[SnippetItem]
     count: int
     cached: Optional[bool] = None  # True if from database, False if freshly generated
+    locked_count: Optional[int] = None  # Number of locked snippets
     model: Optional[str] = None
+    error: Optional[str] = None
+
+
+class ArchivedSnippetsResponse(BaseModel):
+    """Response for archived snippets."""
+
+    success: bool
+    snippets: List[SnippetItem]
+    count: int
     error: Optional[str] = None
 
 
@@ -103,12 +115,14 @@ def get_snippets(
     # Get existing snippets
     service = SnippetService(db)
     result = service.get_existing_snippets(story_id)
+    locked_count = service.get_locked_snippet_count(story_id)
 
     return SnippetsResponse(
         success=True,
         snippets=[SnippetItem(**s) for s in result["snippets"]],
         count=result["count"],
         cached=result["cached"],
+        locked_count=locked_count,
         error=None,
     )
 
@@ -261,5 +275,203 @@ def update_snippet(
         content=snippet.content,
         phase=snippet.phase,
         theme=snippet.theme,
+        is_locked=snippet.is_locked,
+        is_active=snippet.is_active,
         created_at=snippet.created_at,
     )
+
+
+@router.patch("/{snippet_id}/lock", response_model=SnippetItem)
+def toggle_snippet_lock(
+    snippet_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Toggle the lock status of a snippet.
+
+    Locked snippets are protected during regeneration - they won't be
+    deleted when new snippets are generated.
+
+    Args:
+        snippet_id: ID of the snippet to lock/unlock
+        current_user: Authenticated user (injected)
+        db: Database session (injected)
+
+    Returns:
+        Updated SnippetItem with new lock status
+
+    Raises:
+        HTTPException 404: Snippet not found
+        HTTPException 403: Not authorized (not owner)
+    """
+    # Find the snippet
+    snippet = db.query(Snippet).filter(Snippet.id == snippet_id).first()
+    if not snippet:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Snippet not found",
+        )
+
+    # Verify user owns the snippet (via story ownership)
+    story = db.query(Story).filter(Story.id == snippet.story_id).first()
+    if not story or story.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to modify this snippet",
+        )
+
+    # Toggle lock
+    service = SnippetService(db)
+    result = service.toggle_lock(snippet_id)
+
+    action = "locked" if result["is_locked"] else "unlocked"
+    print(f"[API] ✅ {action.capitalize()} snippet {snippet_id}")
+
+    return SnippetItem(**result)
+
+
+@router.get("/{story_id}/archived", response_model=ArchivedSnippetsResponse)
+def get_archived_snippets(
+    story_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get archived (soft-deleted) snippets for a story.
+
+    Archived snippets can be restored using POST /api/snippets/{snippet_id}/restore.
+
+    Args:
+        story_id: ID of the story
+        current_user: Authenticated user (injected)
+        db: Database session (injected)
+
+    Returns:
+        ArchivedSnippetsResponse with archived snippets
+    """
+    # Verify story exists
+    story = db.query(Story).filter(Story.id == story_id).first()
+    if not story:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Story not found",
+        )
+
+    # Verify user owns the story
+    if story.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this story",
+        )
+
+    service = SnippetService(db)
+    result = service.get_archived_snippets(story_id)
+
+    return ArchivedSnippetsResponse(
+        success=True,
+        snippets=[SnippetItem(**s) for s in result["snippets"]],
+        count=result["count"],
+        error=None,
+    )
+
+
+@router.post("/{snippet_id}/restore", response_model=SnippetItem)
+def restore_snippet(
+    snippet_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Restore an archived (soft-deleted) snippet.
+
+    Args:
+        snippet_id: ID of the snippet to restore
+        current_user: Authenticated user (injected)
+        db: Database session (injected)
+
+    Returns:
+        Restored SnippetItem
+
+    Raises:
+        HTTPException 404: Snippet not found
+        HTTPException 403: Not authorized (not owner)
+    """
+    # Find the snippet
+    snippet = db.query(Snippet).filter(Snippet.id == snippet_id).first()
+    if not snippet:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Snippet not found",
+        )
+
+    # Verify user owns the snippet (via story ownership)
+    story = db.query(Story).filter(Story.id == snippet.story_id).first()
+    if not story or story.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to restore this snippet",
+        )
+
+    service = SnippetService(db)
+    result = service.restore_snippet(snippet_id)
+
+    print(f"[API] ✅ Restored snippet {snippet_id}")
+
+    return SnippetItem(**result)
+
+
+@router.delete("/{snippet_id}", response_model=SnippetItem)
+def delete_snippet(
+    snippet_id: int,
+    permanent: bool = False,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Delete a snippet (soft-delete by default, or permanent with ?permanent=true).
+
+    Soft-deleted snippets can be restored from the archived view.
+    Permanent deletion cannot be undone.
+
+    Args:
+        snippet_id: ID of the snippet to delete
+        permanent: If True, permanently delete instead of soft-delete
+        current_user: Authenticated user (injected)
+        db: Database session (injected)
+
+    Returns:
+        Deleted SnippetItem (for soft-delete) or success message
+
+    Raises:
+        HTTPException 404: Snippet not found
+        HTTPException 403: Not authorized (not owner)
+    """
+    # Find the snippet
+    snippet = db.query(Snippet).filter(Snippet.id == snippet_id).first()
+    if not snippet:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Snippet not found",
+        )
+
+    # Verify user owns the snippet (via story ownership)
+    story = db.query(Story).filter(Story.id == snippet.story_id).first()
+    if not story or story.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete this snippet",
+        )
+
+    service = SnippetService(db)
+
+    if permanent:
+        # Return snippet data before permanent deletion
+        snippet_data = snippet.to_dict()
+        service.permanently_delete_snippet(snippet_id)
+        print(f"[API] ✅ Permanently deleted snippet {snippet_id}")
+        return SnippetItem(**snippet_data)
+    else:
+        result = service.soft_delete_snippet(snippet_id)
+        print(f"[API] ✅ Soft-deleted (archived) snippet {snippet_id}")
+        return SnippetItem(**result)

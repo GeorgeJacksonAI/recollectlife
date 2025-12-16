@@ -1,4 +1,4 @@
-import { Pencil } from "lucide-react";
+import { Pencil, Lock, Unlock, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Snippet } from "@/hooks/useProjects";
 
@@ -45,6 +45,8 @@ interface SnippetCardProps {
     index?: number;
     className?: string;
     onEdit?: (snippet: Snippet) => void;
+    onLock?: (snippet: Snippet) => void;
+    onDelete?: (snippet: Snippet) => void;
 }
 
 /**
@@ -56,14 +58,28 @@ interface SnippetCardProps {
  * - Phase indicator for context
  * - Consistent aspect ratio for printing
  * - Edit button on hover (when onEdit is provided)
+ * - Lock/unlock toggle to protect cards during regeneration
+ * - Delete button for soft-deletion
+ * - Gold border ring when locked for clear visual indicator
  */
-export function SnippetCard({ snippet, index, className, onEdit }: SnippetCardProps) {
+export function SnippetCard({ snippet, index, className, onEdit, onLock, onDelete }: SnippetCardProps) {
     const gradient = themeGradients[snippet.theme] || themeGradients.default;
     const phaseName = phaseDisplayNames[snippet.phase] || snippet.phase;
+    const isLocked = snippet.is_locked ?? false;
 
     const handleEditClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         onEdit?.(snippet);
+    };
+
+    const handleLockClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onLock?.(snippet);
+    };
+
+    const handleDeleteClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onDelete?.(snippet);
     };
 
     return (
@@ -80,32 +96,76 @@ export function SnippetCard({ snippet, index, className, onEdit }: SnippetCardPr
                 "shadow-lg hover:shadow-xl transition-all duration-300",
                 // Cursor when editable
                 onEdit && "cursor-pointer",
+                // LOCKED INDICATOR: Gold border ring when locked
+                isLocked && "ring-4 ring-amber-400 ring-offset-2 ring-offset-background",
                 className
             )}
             role="article"
-            aria-label={`Project card: ${snippet.title}`}
+            aria-label={`Project card: ${snippet.title}${isLocked ? " (locked)" : ""}`}
             onClick={onEdit ? handleEditClick : undefined}
             tabIndex={onEdit ? 0 : undefined}
             onKeyDown={onEdit ? (e) => e.key === "Enter" && onEdit(snippet) : undefined}
         >
-            {/* Edit button - appears on hover */}
-            {onEdit && (
-                <button
-                    onClick={handleEditClick}
-                    className={cn(
-                        "absolute top-3 left-1/2 -translate-x-1/2 z-20",
-                        "flex items-center gap-2 px-3 py-1.5",
-                        "bg-white/95 backdrop-blur-sm rounded-full",
-                        "text-sm font-medium text-gray-700",
-                        "opacity-0 group-hover:opacity-100 transition-opacity duration-200",
-                        "hover:bg-white shadow-lg"
-                    )}
-                    aria-label={`Edit ${snippet.title}`}
-                >
-                    <Pencil className="w-3.5 h-3.5" />
-                    Edit
-                </button>
+            {/* Lock indicator badge - always visible when locked */}
+            {isLocked && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 px-2 py-1 bg-amber-400 rounded-full shadow-lg">
+                    <Lock className="w-3 h-3 text-amber-900" />
+                    <span className="text-xs font-semibold text-amber-900">Protected</span>
+                </div>
             )}
+
+            {/* Action buttons - appears on hover */}
+            <div className={cn(
+                "absolute z-20 flex gap-2",
+                isLocked ? "top-12 left-1/2 -translate-x-1/2" : "top-3 left-1/2 -translate-x-1/2",
+                "opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            )}>
+                {onEdit && (
+                    <button
+                        onClick={handleEditClick}
+                        className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5",
+                            "bg-white/95 backdrop-blur-sm rounded-full",
+                            "text-sm font-medium text-gray-700",
+                            "hover:bg-white shadow-lg"
+                        )}
+                        aria-label={`Edit ${snippet.title}`}
+                    >
+                        <Pencil className="w-3.5 h-3.5" />
+                        Edit
+                    </button>
+                )}
+                {onLock && (
+                    <button
+                        onClick={handleLockClick}
+                        className={cn(
+                            "flex items-center justify-center w-9 h-9",
+                            "backdrop-blur-sm rounded-full shadow-lg",
+                            isLocked 
+                                ? "bg-amber-400 hover:bg-amber-500 text-amber-900" 
+                                : "bg-white/95 hover:bg-white text-gray-700"
+                        )}
+                        aria-label={isLocked ? `Unlock ${snippet.title}` : `Lock ${snippet.title}`}
+                        title={isLocked ? "Unlock (allow regeneration)" : "Lock (protect from regeneration)"}
+                    >
+                        {isLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                    </button>
+                )}
+                {onDelete && (
+                    <button
+                        onClick={handleDeleteClick}
+                        className={cn(
+                            "flex items-center justify-center w-9 h-9",
+                            "bg-white/95 backdrop-blur-sm rounded-full",
+                            "text-red-600 hover:bg-red-50 shadow-lg"
+                        )}
+                        aria-label={`Delete ${snippet.title}`}
+                        title="Delete card"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                )}
+            </div>
             {/* Card number badge (optional) */}
             {index !== undefined && (
                 <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">

@@ -72,12 +72,13 @@ class SnippetService:
             {"role": str(msg.role), "content": str(msg.content)} for msg in messages
         ]
 
-    def get_existing_snippets(self, story_id: int) -> Dict:
+    def get_existing_snippets(self, story_id: int, include_archived: bool = False) -> Dict:
         """
         Get existing snippets for a story from the database.
 
         Args:
             story_id: ID of the story
+            include_archived: If True, include soft-deleted snippets (is_active=False)
 
         Returns:
             Dict with keys:
@@ -87,12 +88,13 @@ class SnippetService:
                 - cached (bool): True if snippets exist, False if empty
                 - error (str|None): None
         """
-        snippets = (
-            self.db.query(Snippet)
-            .filter(Snippet.story_id == story_id)
-            .order_by(Snippet.created_at.asc())
-            .all()
-        )
+        query = self.db.query(Snippet).filter(Snippet.story_id == story_id)
+        
+        # Only return active snippets by default
+        if not include_archived:
+            query = query.filter(Snippet.is_active == True)  # noqa: E712
+        
+        snippets = query.order_by(Snippet.created_at.asc()).all()
 
         snippet_list = [s.to_dict() for s in snippets]
 
@@ -104,23 +106,152 @@ class SnippetService:
             "error": None,
         }
 
-    def delete_snippets(self, story_id: int) -> int:
+    def get_archived_snippets(self, story_id: int) -> Dict:
         """
-        Delete all snippets for a story.
+        Get archived (soft-deleted) snippets for a story.
 
         Args:
             story_id: ID of the story
 
         Returns:
-            Number of snippets deleted
+            Dict with success, snippets array, and count
+        """
+        snippets = (
+            self.db.query(Snippet)
+            .filter(Snippet.story_id == story_id)
+            .filter(Snippet.is_active == False)  # noqa: E712
+            .order_by(Snippet.created_at.desc())  # Most recent first for archived
+            .all()
+        )
+
+        snippet_list = [s.to_dict() for s in snippets]
+
+        return {
+            "success": True,
+            "snippets": snippet_list,
+            "count": len(snippet_list),
+            "error": None,
+        }
+
+    def delete_snippets(self, story_id: int) -> int:
+        """
+        Soft-delete unlocked snippets for a story (set is_active=False).
+        
+        Locked snippets are preserved during regeneration.
+
+        Args:
+            story_id: ID of the story
+
+        Returns:
+            Number of snippets soft-deleted
+        """
+        # Only soft-delete unlocked, active snippets
+        soft_deleted = (
+            self.db.query(Snippet)
+            .filter(
+                Snippet.story_id == story_id,
+                Snippet.is_locked == False,  # noqa: E712
+                Snippet.is_active == True,  # noqa: E712
+            )
+            .update({"is_active": False}, synchronize_session=False)
+        )
+        self.db.commit()
+        return soft_deleted
+
+    def permanently_delete_snippet(self, snippet_id: int) -> bool:
+        """
+        Permanently delete a snippet from the database.
+
+        Args:
+            snippet_id: ID of the snippet to delete
+
+        Returns:
+            True if deleted, False if not found
         """
         deleted = (
             self.db.query(Snippet)
-            .filter(Snippet.story_id == story_id)
+            .filter(Snippet.id == snippet_id)
             .delete(synchronize_session=False)
         )
         self.db.commit()
-        return deleted
+        return deleted > 0
+
+    def toggle_lock(self, snippet_id: int) -> Optional[Dict]:
+        """
+        Toggle the lock status of a snippet.
+
+        Args:
+            snippet_id: ID of the snippet
+
+        Returns:
+            Updated snippet dict, or None if not found
+        """
+        snippet = self.db.query(Snippet).filter(Snippet.id == snippet_id).first()
+        if not snippet:
+            return None
+        
+        snippet.is_locked = not snippet.is_locked
+        self.db.commit()
+        self.db.refresh(snippet)
+        return snippet.to_dict()
+
+    def restore_snippet(self, snippet_id: int) -> Optional[Dict]:
+        """
+        Restore an archived (soft-deleted) snippet.
+
+        Args:
+            snippet_id: ID of the snippet to restore
+
+        Returns:
+            Restored snippet dict, or None if not found
+        """
+        snippet = self.db.query(Snippet).filter(Snippet.id == snippet_id).first()
+        if not snippet:
+            return None
+        
+        snippet.is_active = True
+        self.db.commit()
+        self.db.refresh(snippet)
+        return snippet.to_dict()
+
+    def soft_delete_snippet(self, snippet_id: int) -> Optional[Dict]:
+        """
+        Soft-delete a single snippet (set is_active=False).
+
+        Args:
+            snippet_id: ID of the snippet
+
+        Returns:
+            Updated snippet dict, or None if not found
+        """
+        snippet = self.db.query(Snippet).filter(Snippet.id == snippet_id).first()
+        if not snippet:
+            return None
+        
+        snippet.is_active = False
+        self.db.commit()
+        self.db.refresh(snippet)
+        return snippet.to_dict()
+
+    def get_locked_snippet_count(self, story_id: int) -> int:
+        """
+        Get count of locked snippets for a story.
+
+        Args:
+            story_id: ID of the story
+
+        Returns:
+            Number of locked snippets
+        """
+        return (
+            self.db.query(Snippet)
+            .filter(
+                Snippet.story_id == story_id,
+                Snippet.is_locked == True,  # noqa: E712
+                Snippet.is_active == True,  # noqa: E712
+            )
+            .count()
+        )
 
     def _save_snippets(
         self, story_id: int, user_id: int, snippets: List[Dict]

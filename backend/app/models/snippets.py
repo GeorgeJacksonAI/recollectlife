@@ -7,7 +7,7 @@ memorable moments or themes from the user's life story.
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from backend.app.db.base_class import Base
@@ -23,6 +23,8 @@ class Snippet(Base):
     - Content (the snippet text, max 300 chars for card display)
     - Phase (which life phase it relates to: CHILDHOOD, YOUNG_ADULT, etc.)
     - Theme (category: family, friendship, growth, adventure, etc.)
+    - is_locked: Protected from deletion during regeneration
+    - is_active: Soft-delete flag (False = archived/deleted)
     """
 
     __tablename__ = "snippets"
@@ -38,6 +40,10 @@ class Snippet(Base):
         String(50), nullable=True
     )  # family, friendship, growth, adventure, etc.
     phase = Column(String(50), nullable=True)  # CHILDHOOD, YOUNG_ADULT, ADULTHOOD, etc.
+
+    # Card management fields
+    is_locked = Column(Boolean, default=False, nullable=False)  # Protected during regeneration
+    is_active = Column(Boolean, default=True, nullable=False, index=True)  # Soft-delete flag
 
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -59,5 +65,7 @@ class Snippet(Base):
             "content": self.content,
             "theme": self.theme,
             "phase": self.phase,
+            "is_locked": self.is_locked,
+            "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

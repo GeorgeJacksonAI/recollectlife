@@ -19,6 +19,8 @@ export interface Snippet {
     content: string;
     phase: string;
     theme: string;
+    is_locked?: boolean;
+    is_active?: boolean;
     created_at?: string;
 }
 
@@ -27,7 +29,15 @@ export interface SnippetsResponse {
     snippets: Snippet[];
     count: number;
     cached?: boolean;  // True if from database, false if freshly generated
+    locked_count?: number;  // Number of locked snippets
     model?: string | null;
+    error?: string;
+}
+
+export interface ArchivedSnippetsResponse {
+    success: boolean;
+    snippets: Snippet[];
+    count: number;
     error?: string;
 }
 
@@ -255,6 +265,152 @@ export const useCachedSnippets = (projectId: number | undefined) => {
     });
 };
 
+/**
+ * Toggle lock status of a snippet.
+ * 
+ * Locked snippets are protected during regeneration.
+ */
+export const useLockSnippet = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            snippetId,
+            projectId
+        }: {
+            snippetId: number;
+            projectId: number;
+        }): Promise<Snippet> => {
+            const response = await api.patch<Snippet>(`/api/snippets/${snippetId}/lock`);
+            return response.data;
+        },
+        onMutate: async ({ snippetId, projectId }) => {
+            // Cancel any outgoing refetches
+            await queryClient.cancelQueries({ queryKey: ['snippets', projectId] });
+
+            // Snapshot the previous value
+            const previousSnippets = queryClient.getQueryData<SnippetsResponse>(['snippets', projectId]);
+
+            // Optimistically toggle the lock
+            if (previousSnippets) {
+                queryClient.setQueryData<SnippetsResponse>(['snippets', projectId], {
+                    ...previousSnippets,
+                    snippets: previousSnippets.snippets.map(s =>
+                        s.id === snippetId ? { ...s, is_locked: !s.is_locked } : s
+                    ),
+                });
+            }
+
+            return { previousSnippets, projectId };
+        },
+        onError: (err, variables, context) => {
+            if (context?.previousSnippets) {
+                queryClient.setQueryData(['snippets', context.projectId], context.previousSnippets);
+            }
+        },
+        onSettled: (data, error, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['snippets', variables.projectId] });
+        },
+    });
+};
+
+/**
+ * Fetch archived (soft-deleted) snippets for a project.
+ */
+export const useArchivedSnippets = (projectId: number | undefined) => {
+    return useQuery({
+        queryKey: ['snippets', projectId, 'archived'],
+        queryFn: async (): Promise<ArchivedSnippetsResponse> => {
+            if (!projectId) {
+                return { success: true, snippets: [], count: 0 };
+            }
+            const response = await api.get<ArchivedSnippetsResponse>(`/api/snippets/${projectId}/archived`);
+            return response.data;
+        },
+        enabled: !!projectId,
+        staleTime: 2 * 60 * 1000, // 2 minutes
+    });
+};
+
+/**
+ * Restore an archived snippet.
+ */
+export const useRestoreSnippet = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            snippetId,
+            projectId
+        }: {
+            snippetId: number;
+            projectId: number;
+        }): Promise<Snippet> => {
+            const response = await api.post<Snippet>(`/api/snippets/${snippetId}/restore`);
+            return response.data;
+        },
+        onSuccess: (data, variables) => {
+            // Invalidate both active and archived snippets queries
+            queryClient.invalidateQueries({ queryKey: ['snippets', variables.projectId] });
+            queryClient.invalidateQueries({ queryKey: ['snippets', variables.projectId, 'archived'] });
+        },
+    });
+};
+
+/**
+ * Delete a snippet (soft-delete by default).
+ * 
+ * Pass permanent: true to permanently delete.
+ */
+export const useDeleteSnippet = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            snippetId,
+            projectId,
+            permanent = false
+        }: {
+            snippetId: number;
+            projectId: number;
+            permanent?: boolean;
+        }): Promise<Snippet> => {
+            const url = permanent 
+                ? `/api/snippets/${snippetId}?permanent=true`
+                : `/api/snippets/${snippetId}`;
+            const response = await api.delete<Snippet>(url);
+            return response.data;
+        },
+        onMutate: async ({ snippetId, projectId }) => {
+            // Cancel any outgoing refetches
+            await queryClient.cancelQueries({ queryKey: ['snippets', projectId] });
+
+            // Snapshot the previous value
+            const previousSnippets = queryClient.getQueryData<SnippetsResponse>(['snippets', projectId]);
+
+            // Optimistically remove the snippet from active list
+            if (previousSnippets) {
+                queryClient.setQueryData<SnippetsResponse>(['snippets', projectId], {
+                    ...previousSnippets,
+                    snippets: previousSnippets.snippets.filter(s => s.id !== snippetId),
+                    count: previousSnippets.count - 1,
+                });
+            }
+
+            return { previousSnippets, projectId };
+        },
+        onError: (err, variables, context) => {
+            if (context?.previousSnippets) {
+                queryClient.setQueryData(['snippets', context.projectId], context.previousSnippets);
+            }
+        },
+        onSettled: (data, error, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['snippets', variables.projectId] });
+            queryClient.invalidateQueries({ queryKey: ['snippets', variables.projectId, 'archived'] });
+        },
+    });
+};
+
 // Legacy exports for backward compatibility during migration
 // TODO: Remove these after all consumers are updated
 export type { Project as Story };
@@ -266,4 +422,8 @@ export {
     useDeleteProject as useDeleteStory,
     useProjectSnippets as useStorySnippets,
     useSnippets as useStorySnippetsQuery,
+    useLockSnippet as useLockStorySnippet,
+    useArchivedSnippets as useArchivedStorySnippets,
+    useRestoreSnippet as useRestoreStorySnippet,
+    useDeleteSnippet as useDeleteStorySnippet,
 };
