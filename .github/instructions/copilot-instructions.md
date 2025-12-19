@@ -252,6 +252,20 @@ Never report a code change as "applied" without verifying it exists in the actua
 4. **Persistent errors signal unverified fixes:** If a user reports the same error after you claimed to fix it, assume the fix was not written to disk and re-verify
 5. **Test after verification:** Once you confirm the code is in the file, test the system to ensure the fix actually works
 
+**Complete Deployment Verification Loop:**
+
+For changes that must be deployed (config files, dependencies, code), verify the entire deployment chain:
+
+1. ✅ **File edited** - Change applied to local file
+2. ✅ **File verified** - Re-read file to confirm change exists
+3. ✅ **Changes committed** - `git status` shows clean working tree
+4. ✅ **Pushed to CORRECT remote** - Verify with `git remote -v`, push to production remote (not just origin)
+5. ✅ **Deployment triggered** - Platform (Render/Vercel/etc) detects new commit and starts build
+6. ✅ **Build succeeds** - Platform logs show successful installation/compilation
+7. ✅ **Change applied in production** - Service actually uses new config/code
+
+**If error persists after steps 1-3:** Stop fixing code. Verify deployment topology (check git remotes, ensure pushing to correct repository).
+
 **Example of correct workflow:**
 - ✅ Modify file
 - ✅ Re-read the file to confirm change is present
@@ -459,6 +473,20 @@ When you find what you're looking for, look around. Related files are usually ne
 
 **"Still Broken" Means Multiple Instances:** When a user reports an issue is "still present" or "not working," default to assuming multiple instances exist throughout the codebase. Use exhaustive search (grep with patterns like `**/filename`, recursive globs) before concluding the fix is complete. A single fixed instance while others remain is an incomplete solution.
 
+**Identical Error After Correct Fix = Wrong Problem:**
+
+When you apply a technically correct fix but the exact same error persists:
+
+1. **Stop fixing code** - You're solving the wrong layer of the problem
+2. **Question your assumptions** - Is the fix reaching the running system? Are you editing the right file/environment?
+3. **Verify the complete chain:**
+   - Is the file you edited actually being used? (correct path, correct environment)
+   - For deployed systems: Are changes reaching production? (check git remotes, deployment logs)
+   - For configs: Is the service reading the config you modified? (check service restart, config load logs)
+4. **Map the system end-to-end** - Trace from error source to your fix to verify they're connected
+
+**Pattern:** Correct syntax fix → Error persists identically → Fix isn't reaching the running system → Investigate deployment/config/environment topology.
+
 ### File Search Approach
 
 **Start by understanding the environment:** Look at directory structure first. Is it flat, categorized, dated, organized by project? This tells you how to search effectively.
@@ -488,6 +516,24 @@ User says: "It's there, find it" / "Look again" / "Search more thoroughly" / "Yo
 ## Service & Infrastructure
 
 **Long-running operations:** If something takes more than a minute, run it in the background. Check on it periodically. Don't block waiting for completion - mark it done only when it actually finishes.
+
+**Deployment Infrastructure Verification Protocol:** Before fixing deployment errors, ALWAYS verify the deployment topology:
+
+1. **Check git remotes first:** Run `git remote -v` to see all configured repositories
+2. **Identify production remote:** Determine which remote the deployment platform (Render, Vercel, Netlify) is watching
+3. **Verify push target:** Ensure you're pushing to the correct remote that triggers deployment
+4. **Common multi-remote patterns:**
+   - `origin` → Personal/backup repository
+   - `production` / `other` / `client` → Production deployment repository
+   - Client projects often have separate repos for development vs production
+
+**Context clues indicating multi-remote setup:**
+- User mentions "my account" vs "client project"
+- References to "their repo" or "his GitHub"
+- Deployment platform errors despite local fixes working
+- Previous mentions of pushing to different remotes
+
+**When deployment errors persist despite correct fixes:** First verify changes are reaching the deployed environment. Check git topology before assuming code/config issues.
 
 **Port conflict resolution protocol:** Before starting ANY server/service, follow this exact sequence:
 1. Check if port is in use: `lsof -ti:PORT` or `netstat` 
