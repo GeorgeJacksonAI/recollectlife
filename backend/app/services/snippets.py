@@ -376,8 +376,14 @@ class SnippetService:
         locked_context = ""
         if locked_snippets:
             locked_topics = "\n".join(
-                [f"- {s['title']}: {s['content'][:100]}..." if len(s['content']) > 100 else f"- {s['title']}: {s['content']}"
-                 for s in locked_snippets]
+                [
+                    (
+                        f"- {s['title']}: {s['content'][:100]}..."
+                        if len(s["content"]) > 100
+                        else f"- {s['title']}: {s['content']}"
+                    )
+                    for s in locked_snippets
+                ]
             )
             locked_context = f"""
 
